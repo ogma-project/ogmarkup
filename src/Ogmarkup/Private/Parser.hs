@@ -28,6 +28,7 @@ aside = do asideSeparator
            ps <- many1 (paragraph <* spaces)
            asideSeparator
            manyTill space ((skip $ char '\n') <|> eof)
+           spaces
 
            return $ Ast.Aside ps
 
