@@ -143,11 +143,11 @@ genComponent p n (Ast.Teller fs) = do
 
 genParagraph :: [Ast.Component]
              -> Generator
-genParagraph (h:r) = do
+genParagraph l@(h:r) = do
   tag <- paragraphTag <$> ask
   between <- betweenDialogue <$> ask
 
-  genApply tag (recGen between False (willBeDialogue r) (h:r))
+  genApply tag (recGen between False (willBeDialogue l) (h:r))
 
   where
     isDialogue (Ast.Dialogue _ _) = True
