@@ -21,7 +21,7 @@ library
                        Ogmarkup.Config,
                        Ogmarkup.HTML
   build-depends:       base >= 4.7 && < 5, parsec == 3.1.9,
-                       mtl
+                       mtl, text, shakespeare
   default-language:    Haskell2010
 
 test-suite ogmadown-test
@@ -29,14 +29,14 @@ test-suite ogmadown-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base, hspec,
-                       ogmarkup, parsec
+                       ogmarkup, parsec, text
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 executable ogmarkup
   hs-source-dirs:      app
   main-is:             Main.hs
-  build-depends:       base, ogmarkup, parsec
+  build-depends:       base, ogmarkup, parsec, text, shakespeare
   default-language:    Haskell2010
 
 source-repository head

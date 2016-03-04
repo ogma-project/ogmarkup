@@ -1,5 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Ogmarkup.Config where
 
+import Data.Text (Text)
 import qualified Ogmarkup.Private.Ast as Ast
 
 -- | Deal with typographic spaces, especially when it comes to
@@ -14,7 +17,7 @@ data Space =
 
 -- | A Typography is a data type that tells the caller what space
 --   she should privileged before and after a text.
-newtype Typography = Typography { decide :: Ast.Atom -> (Space, Space, String) }
+newtype Typography = Typography { decide :: Ast.Atom -> (Space, Space, Text) }
 
 -- | From a Typography, it gives the space to privilege before the
 --   input Text.
@@ -30,10 +33,10 @@ afterAtom :: Typography
           -> Space
 afterAtom t o = case decide t o of (_, r, _) -> r
 
--- | Normalize the input in order to add it to a generated String.
+-- | Normalize the input in order to add it to a generated Text.
 normalizeAtom :: Typography
               -> Ast.Atom
-              -> String
+              -> Text
 normalizeAtom t o = case decide t o of (_, _, r) -> r
 
 -- | The French typography. It can be used with several generation
@@ -41,7 +44,7 @@ normalizeAtom t o = case decide t o of (_, _, r) -> r
 frenchTypo :: Typography
 frenchTypo = Typography t
   where
-    t :: Ast.Atom -> (Space, Space, String)
+    t :: Ast.Atom -> (Space, Space, Text)
     t (Ast.Word w) = (Normal, Normal, w)
     t (Ast.Punctuation Ast.Semicolon) = (Nbsp, Normal, ";")
     t (Ast.Punctuation Ast.Colon) = (Nbsp, Normal, ":")
@@ -62,36 +65,36 @@ frenchTypo = Typography t
 data GenConf = GenConf { -- | The Typography to use for the generation
                          typography :: Typography,
                          -- | A tag to open a paragraph.
-                         beginParagraph :: String,
+                         beginParagraph :: Text,
                          -- | A tag to close a paragraph.
-                         endParagraph :: String,
+                         endParagraph :: Text,
                          -- | A tag to open an audible dialog part.
-                         beginDialogue :: (String -> String),
+                         beginDialogue :: (Text -> Text),
                          -- | A tag to close an audible dialog part.
-                         endDialogue :: (String -> String),
+                         endDialogue :: (Text -> Text),
                          -- | A tag to open a thought.
-                         beginThought :: (String -> String),
+                         beginThought :: (Text -> Text),
                          -- | A tag to end a thought.
-                         endThought :: (String -> String),
+                         endThought :: (Text -> Text),
                          -- | A function to transform the author name
                          --   into something else: a CSS class, for
                          --   instance, or an HTML color code.
-                         authorNormalize :: String -> String,
+                         authorNormalize :: Text -> Text,
                          -- | A template function that takes the
                          --   normalized author as a parameter. The
                          --   result is used as a opening tag
                          --   for dialog.
-                         beginReply :: String,
+                         beginReply :: Text,
                          -- | A template function to render the
                          --   closing tag for dialog.
-                         endReply :: String,
+                         endReply :: Text,
                          -- | Opening tag for weak emphasis.
-                         beginWeakEmph :: String,
+                         beginWeakEmph :: Text,
                          -- | Closing tag for weak emphasis.
-                         endWeakEmph :: String,
+                         endWeakEmph :: Text,
                          -- | Opening tag for strong emphasis.
-                         beginStrongEmph :: String,
+                         beginStrongEmph :: Text,
                          -- | Closing tag for strong emphasis.
-                         endStrongEmph :: String,
+                         endStrongEmph :: Text,
                          -- | A function to render typographic spaces.
-                         printSpace :: Space -> String }
+                         printSpace :: Space -> Text }
