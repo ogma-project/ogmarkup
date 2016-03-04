@@ -5,7 +5,7 @@ module Ogmarkup.HTML (
   ) where
 
 import Text.Shakespeare.Text
-import Data.Text (Text, append)
+import Data.Text (Text)
 import Ogmarkup.Config
 import qualified Ogmarkup.Private.Ast as Ast
 import Ogmarkup.Private.Generator
@@ -20,18 +20,19 @@ mkSpan clss = [st|<span class="#{clss}">|]
 
 htmlFrenchConf :: GenConf
 htmlFrenchConf = GenConf frenchTypo
-                         ("<article>", "</article>")
-                         ("", "")
-                         ("<blockquote>", "</blockquote>")
-                         ("<p>", "</p>")
-                         ("", "")
-                         (\a -> (mkSpan $ [st|dialogue by-#{a}|], "</span>"))
-                         (\a -> (mkSpan $ [st|"thought by-#{a}|], "</span>"))
-                         (mkSpan "reply", "</span>")
-                         ("<emph>", "</emph>")
-                         ("<strong>", "</strong>")
-                         id
-                         htmlPrintSpace
+  (\doc -> [st|<article>#{doc}</article>|])
+  id
+  (\aside -> [st|<blockquote>#{aside}</blockquote>|])
+  (\paragraph -> [st|<p>#{paragraph}</p>|])
+  id
+  (\a -> \dialogue -> [st|<span class="dialogue by-#{a}">#{dialogue}</span>|])
+  (\a -> \thought -> [st|<span class="thought by-#{a}">#{thought}</span>|])
+  (\reply -> [st|<span>#{reply}</span>|])
+  "</p><p>"
+  (\text -> [st|<emph>#{text}</emph>|])
+  (\text -> [st|<strong>#{text}</strong>|])
+  id
+  htmlPrintSpace
 
 -- | From an Ogma AST, generate a HTML body.
 generateHTML :: Ast.Document
