@@ -59,42 +59,28 @@ frenchTypo = Typography t
     t (Ast.Punctuation Ast.Point) = (None, Normal, ".")
     t (Ast.Punctuation Ast.SuspensionPoints) = (None, Normal, "…")
 
+type Tag = (Text, Text)
+
+open :: Tag -> Text
+open = fst
+
+close :: Tag -> Text
+close = snd
+
 -- | A data type to carry out the generation configuration. In
 --   particular, it works well to define a Typography and some
 --   marker such as HTML tags.
 data GenConf = GenConf { -- | The Typography to use for the generation
                          typography :: Typography,
-                         -- | A tag to open a paragraph.
-                         beginParagraph :: Text,
-                         -- | A tag to close a paragraph.
-                         endParagraph :: Text,
-                         -- | A tag to open an audible dialog part.
-                         beginDialogue :: (Text -> Text),
-                         -- | A tag to close an audible dialog part.
-                         endDialogue :: (Text -> Text),
-                         -- | A tag to open a thought.
-                         beginThought :: (Text -> Text),
-                         -- | A tag to end a thought.
-                         endThought :: (Text -> Text),
-                         -- | A function to transform the author name
-                         --   into something else: a CSS class, for
-                         --   instance, or an HTML color code.
+                         documentTag :: Tag,
+                         storyTag :: Tag,
+                         asideTag :: Tag,
+                         paragraphTag :: Tag,
+                         tellerTag :: Tag,
+                         dialogueTag :: Text -> Tag,
+                         thoughtTag :: Text -> Tag,
+                         replyTag :: Tag,
+                         emphTag :: Tag,
+                         strongEmphTag :: Tag,
                          authorNormalize :: Text -> Text,
-                         -- | A template function that takes the
-                         --   normalized author as a parameter. The
-                         --   result is used as a opening tag
-                         --   for dialog.
-                         beginReply :: Text,
-                         -- | A template function to render the
-                         --   closing tag for dialog.
-                         endReply :: Text,
-                         -- | Opening tag for weak emphasis.
-                         beginWeakEmph :: Text,
-                         -- | Closing tag for weak emphasis.
-                         endWeakEmph :: Text,
-                         -- | Opening tag for strong emphasis.
-                         beginStrongEmph :: Text,
-                         -- | Closing tag for strong emphasis.
-                         endStrongEmph :: Text,
-                         -- | A function to render typographic spaces.
                          printSpace :: Space -> Text }
