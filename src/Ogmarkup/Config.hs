@@ -59,13 +59,7 @@ frenchTypo = Typography t
     t (Ast.Punctuation Ast.Point) = (None, Normal, ".")
     t (Ast.Punctuation Ast.SuspensionPoints) = (None, Normal, "…")
 
-type Tag = (Text, Text)
-
-open :: Tag -> Text
-open = fst
-
-close :: Tag -> Text
-close = snd
+type Tag = Text -> Text
 
 -- | A data type to carry out the generation configuration. In
 --   particular, it works well to define a Typography and some
@@ -80,6 +74,7 @@ data GenConf = GenConf { -- | The Typography to use for the generation
                          dialogueTag :: Text -> Tag,
                          thoughtTag :: Text -> Tag,
                          replyTag :: Tag,
+                         betweenDialogue :: Text,
                          emphTag :: Tag,
                          strongEmphTag :: Tag,
                          authorNormalize :: Text -> Text,

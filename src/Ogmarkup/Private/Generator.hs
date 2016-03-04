@@ -11,6 +11,14 @@ import Ogmarkup.Config
 
 type Generator = StateT (Text, Maybe Ast.Atom) (Reader GenConf) ()
 
+genApply :: (Text -> Text) -> Generator -> Generator
+genApply app gen = do
+  (str, maybe) <- get
+  put ("", maybe)
+  gen
+  (str', maybe') <- get
+  put (str `append` (app str'), maybe')
+
 genResetPrev :: Generator
 genResetPrev = do
   (str, _) <- get
@@ -66,15 +74,11 @@ genFormat (Ast.Raw cs) = genCollections cs
 genFormat (Ast.Emph cs) = do
   tag <- emphTag <$> ask
 
-  genRawText $ open tag
-  genCollections cs
-  genRawText $ close tag
+  genApply tag (genCollections cs)
 genFormat (Ast.StrongEmph cs) = do
   tag <- strongEmphTag <$> ask
 
-  genRawText $ open tag
-  genCollections cs
-  genRawText $ close tag
+  genApply tag (genCollections cs)
 
 genFormats :: [Ast.Format]
            -> Generator
@@ -91,26 +95,20 @@ genReply begin end (Ast.Simple d) = do
   tag <- replyTag <$> ask
 
   genMaybeAtom begin
-  genRawText $ open tag
-  genFormats d
-  genRawText $ close tag
+  genApply tag (genFormats d)
   genMaybeAtom end
 genReply begin end (Ast.WithSay d ws d') = do
   tag <- replyTag <$> ask
 
   genMaybeAtom begin
-  genRawText $ open tag
-  genFormats d
-  genRawText $ close tag
+  genApply tag (genFormats d)
 
   case d' of [] -> do
                genMaybeAtom end
                genFormats ws
              l -> do
                genFormats ws
-               genRawText $ open tag
-               genFormats d'
-               genRawText $ close tag
+               genApply tag (genFormats d')
                genMaybeAtom end
 
 genComponent :: Bool           -- ^ Was the last component an audible dialog?
@@ -124,9 +122,7 @@ genComponent p n (Ast.Dialogue d a) = do
     auth = authorNormalize conf
     tag = (dialogueTag conf) (auth a)
 
-  genRawText $ open tag
-  genReply (prevT p) (nextT n) d
-  genRawText $ close tag
+  genApply tag (genReply (prevT p) (nextT n) d)
   where
     prevT True = Just (Ast.Punctuation Ast.LongDash)
     prevT False = Just (Ast.Punctuation Ast.OpenQuote)
@@ -140,9 +136,7 @@ genComponent p n (Ast.Thought d a) = do
     auth = authorNormalize conf
     tag = (dialogueTag conf) (auth a)
 
-  genRawText $ open tag
-  genReply Nothing Nothing d
-  genRawText $ close tag
+  genApply tag (genReply Nothing Nothing d)
 genComponent p n (Ast.Teller fs) = do
   genFormats fs
 
@@ -150,10 +144,9 @@ genParagraph :: [Ast.Component]
              -> Generator
 genParagraph (h:r) = do
   tag <- paragraphTag <$> ask
+  between <- betweenDialogue <$> ask
 
-  genRawText $ open tag
-  recGen (open tag) (close tag) False (willBeDialogue r) (h:r)
-  genRawText $ close tag
+  genApply tag (recGen between False (willBeDialogue r) (h:r))
 
   where
     isDialogue (Ast.Dialogue _ _) = True
@@ -163,18 +156,17 @@ genParagraph (h:r) = do
     willBeDialogue _ = False
 
     recGen :: Text
-           -> Text
            -> Bool
            -> Bool
            -> [Ast.Component]
            -> Generator
-    recGen beg end p n (c:rst) = do
-      case (p, isDialogue c) of (True, True) -> do genRawText (end `append` beg)
+    recGen between p n (c:rst) = do
+      case (p, isDialogue c) of (True, True) -> do genRawText between
                                                    genResetPrev
                                 _ -> return ()
       genComponent p n c
-      recGen beg end (isDialogue c) (willBeDialogue rst) rst
-    recGen _ _ _ _ [] = return ()
+      recGen between (isDialogue c) (willBeDialogue rst) rst
+    recGen _ _ _ [] = return ()
 
 genParagraphs :: [Ast.Paragraph] -> Generator
 genParagraphs (h:r) = do genParagraph h
@@ -185,14 +177,10 @@ genParagraphs [] = return ()
 genSection :: Ast.Section -> Generator
 genSection (Ast.Story ps) = do tag <- storyTag <$> ask
 
-                               genRawText $ open tag
-                               genParagraphs ps
-                               genRawText $ close tag
+                               genApply tag (genParagraphs ps)
 genSection (Ast.Aside ps) = do tag <- asideTag <$> ask
 
-                               genRawText $ open tag
-                               genParagraphs ps
-                               genRawText $ close tag
+                               genApply tag (genParagraphs ps)
 
 genSections :: [Ast.Section] -> Generator
 genSections (s:r) = do genSection s
@@ -202,9 +190,7 @@ genSections [] = return ()
 genDocument :: Ast.Document -> Generator
 genDocument d = do tag <- documentTag <$> ask
 
-                   genRawText $ open tag
-                   genSections d
-                   genRawText $ close tag
+                   genApply tag (genSections d)
 
 generate :: GenConf
          -> Ast.Document
