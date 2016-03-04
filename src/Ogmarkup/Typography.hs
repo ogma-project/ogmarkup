@@ -17,7 +17,11 @@ data Space =
 
 -- | A Typography is a data type that tells the caller what space
 --   she should privileged before and after a text.
-newtype Typography = Typography { decide :: Ast.Atom -> (Space, Space, Text) }
+data Typography = Typography {
+  decide :: Ast.Atom -> (Space, Space, Text),
+  openDialogue :: Bool -> Maybe Ast.Mark,
+  closeDialogue :: Bool -> Maybe Ast.Mark
+  }
 
 -- | From a Typography, it gives the space to privilege before the
 --   input Text.
@@ -42,7 +46,7 @@ normalizeAtom t o = case decide t o of (_, _, r) -> r
 -- | The French typography. It can be used with several generation
 -- approach, as it stay very generic.
 frenchTypo :: Typography
-frenchTypo = Typography t
+frenchTypo = Typography t prevT nextT
   where
     t :: Ast.Atom -> (Space, Space, Text)
     t (Ast.Word w) = (Normal, Normal, w)
@@ -59,8 +63,14 @@ frenchTypo = Typography t
     t (Ast.Punctuation Ast.Point) = (None, Normal, ".")
     t (Ast.Punctuation Ast.SuspensionPoints) = (None, Normal, "…")
 
+    prevT True = Just (Ast.LongDash)
+    prevT False = Just (Ast.OpenQuote)
+
+    nextT True = Nothing
+    nextT False = Just (Ast.CloseQuote)
+
 englishTypo :: Typography
-englishTypo = Typography t
+englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuote)
   where
     t :: Ast.Atom -> (Space, Space, Text)
     t (Ast.Word w) = (Normal, Normal, w)

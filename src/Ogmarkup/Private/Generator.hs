@@ -119,17 +119,14 @@ genComponent :: Bool           -- ^ Was the last component an audible dialog?
 genComponent p n (Ast.Dialogue d a) = do
   conf <- ask
 
-  let 
+  let
+    open = openDialogue . typography $ conf
+    close = closeDialogue . typography $ conf
     auth = authorNormalize conf
     tag = (dialogueTag conf) (auth a)
 
-  genApply tag (genReply (prevT p) (nextT n) d)
-  where
-    prevT True = Just (Ast.Punctuation Ast.LongDash)
-    prevT False = Just (Ast.Punctuation Ast.OpenQuote)
+  genApply tag (genReply (Ast.Punctuation <$> open p) (Ast.Punctuation <$> close p) d)
 
-    nextT True = Nothing
-    nextT False = Just (Ast.Punctuation Ast.CloseQuote)
 genComponent p n (Ast.Thought d a) = do
   conf <- ask
 
