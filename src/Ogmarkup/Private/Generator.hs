@@ -64,17 +64,17 @@ genFormat :: Ast.Format
           -> Generator
 genFormat (Ast.Raw cs) = genCollections cs
 genFormat (Ast.Emph cs) = do
-  conf <- ask
+  tag <- emphTag <$> ask
 
-  genRawText $ beginWeakEmph conf
+  genRawText $ open tag
   genCollections cs
-  genRawText $ endWeakEmph conf
+  genRawText $ close tag
 genFormat (Ast.StrongEmph cs) = do
-  conf <- ask
+  tag <- strongEmphTag <$> ask
 
-  genRawText $ beginStrongEmph conf
+  genRawText $ open tag
   genCollections cs
-  genRawText $ endStrongEmph conf
+  genRawText $ close tag
 
 genFormats :: [Ast.Format]
            -> Generator
@@ -88,31 +88,29 @@ genReply :: Maybe Ast.Atom
          -> Ast.Reply
          -> Generator
 genReply begin end (Ast.Simple d) = do
-  br <- beginReply <$> ask
-  er <- endReply <$> ask
+  tag <- replyTag <$> ask
 
   genMaybeAtom begin
-  genRawText br
+  genRawText $ open tag
   genFormats d
-  genRawText  er
+  genRawText $ close tag
   genMaybeAtom end
 genReply begin end (Ast.WithSay d ws d') = do
-  br <- beginReply <$> ask
-  er <- endReply <$> ask
+  tag <- replyTag <$> ask
 
   genMaybeAtom begin
-  genRawText br
+  genRawText $ open tag
   genFormats d
-  genRawText er
+  genRawText $ close tag
 
   case d' of [] -> do
                genMaybeAtom end
                genFormats ws
              l -> do
                genFormats ws
-               genRawText br
+               genRawText $ open tag
                genFormats d'
-               genRawText er
+               genRawText $ close tag
                genMaybeAtom end
 
 genComponent :: Bool           -- ^ Was the last component an audible dialog?
@@ -120,13 +118,15 @@ genComponent :: Bool           -- ^ Was the last component an audible dialog?
              -> Ast.Component  -- ^ The current to process.
              -> Generator
 genComponent p n (Ast.Dialogue d a) = do
-  db <- beginDialogue <$> ask
-  de <- endDialogue <$> ask
-  auth <- authorNormalize <$> ask
+  conf <- ask
 
-  genRawText . db . auth $ a
+  let 
+    auth = authorNormalize conf
+    tag = (dialogueTag conf) (auth a)
+
+  genRawText $ open tag
   genReply (prevT p) (nextT n) d
-  genRawText . de . auth $ a
+  genRawText $ close tag
   where
     prevT True = Just (Ast.Punctuation Ast.LongDash)
     prevT False = Just (Ast.Punctuation Ast.OpenQuote)
@@ -134,25 +134,26 @@ genComponent p n (Ast.Dialogue d a) = do
     nextT True = Nothing
     nextT False = Just (Ast.Punctuation Ast.CloseQuote)
 genComponent p n (Ast.Thought d a) = do
-  tb <- beginThought <$> ask
-  te <- endThought <$> ask
-  auth <- authorNormalize <$> ask
+  conf <- ask
 
-  genRawText . tb . auth $ a
+  let 
+    auth = authorNormalize conf
+    tag = (dialogueTag conf) (auth a)
+
+  genRawText $ open tag
   genReply Nothing Nothing d
-  genRawText . te . auth $ a
+  genRawText $ close tag
 genComponent p n (Ast.Teller fs) = do
   genFormats fs
 
 genParagraph :: [Ast.Component]
              -> Generator
 genParagraph (h:r) = do
-  begin <- beginParagraph <$> ask
-  end <- endParagraph <$> ask
+  tag <- paragraphTag <$> ask
 
-  genRawText begin
-  recGen begin end False (willBeDialogue r) (h:r)
-  genRawText end
+  genRawText $ open tag
+  recGen (open tag) (close tag) False (willBeDialogue r) (h:r)
+  genRawText $ close tag
 
   where
     isDialogue (Ast.Dialogue _ _) = True
@@ -177,21 +178,33 @@ genParagraph (h:r) = do
 
 genParagraphs :: [Ast.Paragraph] -> Generator
 genParagraphs (h:r) = do genParagraph h
+                         genResetPrev
                          genParagraphs r
 genParagraphs [] = return ()
 
 genSection :: Ast.Section -> Generator
-genSection (Ast.Story ps) = do genRawText "<div>"
-                               genParagraphs ps
-                               genRawText "</div>"
-genSection (Ast.Aside ps) = do genRawText "<blockquote>"
-                               genParagraphs ps
-                               genRawText "</blockquote>"
+genSection (Ast.Story ps) = do tag <- storyTag <$> ask
 
-genDocument :: [Ast.Section] -> Generator
-genDocument (s:r) = do genSection s
-                       genDocument r
-genDocument [] = return ()
+                               genRawText $ open tag
+                               genParagraphs ps
+                               genRawText $ close tag
+genSection (Ast.Aside ps) = do tag <- asideTag <$> ask
+
+                               genRawText $ open tag
+                               genParagraphs ps
+                               genRawText $ close tag
+
+genSections :: [Ast.Section] -> Generator
+genSections (s:r) = do genSection s
+                       genSections r
+genSections [] = return ()
+
+genDocument :: Ast.Document -> Generator
+genDocument d = do tag <- documentTag <$> ask
+
+                   genRawText $ open tag
+                   genSections d
+                   genRawText $ close tag
 
 generate :: GenConf
          -> Ast.Document

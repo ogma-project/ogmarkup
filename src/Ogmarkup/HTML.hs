@@ -20,19 +20,17 @@ mkSpan clss = [st|<span class="#{clss}">|]
 
 htmlFrenchConf :: GenConf
 htmlFrenchConf = GenConf frenchTypo
-                         "<p>"
-                         "</p>"
-                         (\a -> mkSpan $ [st|dialogue by-#{a}|])
-                         (pure "</span>")
-                         (\a -> mkSpan $ [st|"thought by-#{a}|])
-                         (pure "</span>")
+                         ("<article>", "</article>")
+                         ("", "")
+                         ("<blockquote>", "</blockquote>")
+                         ("<p>", "</p>")
+                         ("", "")
+                         (\a -> (mkSpan $ [st|dialogue by-#{a}|], "</span>"))
+                         (\a -> (mkSpan $ [st|"thought by-#{a}|], "</span>"))
+                         (mkSpan "reply", "</span>")
+                         ("<emph>", "</emph>")
+                         ("<strong>", "</strong>")
                          id
-                         (mkSpan "reply")
-                         "</span>"
-                         "<emph>"
-                         "</emph>"
-                         "<strong>"
-                         "</strong>"
                          htmlPrintSpace
 
 -- | From an Ogma AST, generate a HTML body.
