@@ -7,6 +7,7 @@ import Control.Monad.Reader
 import Data.Text (Text, append)
 
 import qualified Ogmarkup.Private.Ast as Ast
+import Ogmarkup.Typography
 import Ogmarkup.Config
 
 type Generator = StateT (Text, Maybe Ast.Atom) (Reader GenConf) ()
