@@ -1,5 +1,6 @@
 {-# LANGUAGE QuasiQuotes, OverloadedStrings #-}
 
+import Ogmarkup.Typography
 import Ogmarkup.HTML
 import Ogmarkup.Private.Ast
 import Ogmarkup.Private.Parser
@@ -12,21 +13,35 @@ import System.IO
 
 main :: IO ()
 main = do
-  input <- readFile "sample.up"
-  case parse document "(stdin)" input of
-    Right comps -> do
+  input <- readFile "examples/sample.up"
+  case generateHTML frenchTypo input of
+    Right res -> do
       TIO.putStrLn [st|<html>
   <head>
     <meta charset=utf-8>
     <style>
-      .by-kata .reply {
-        color:blue;
-      }
+    body {
+      margin:auto;
+      width: 80%;
+      max-width: 600px;
+      text-align: justify;
+    }
+    p {
+      text-indent:25px;
+    }
+    .reply {
+      color:gray;
+    }
+    .dialogue .by-kahina .reply {
+      font-weight: bold;
+    }
+    .thought .reply {
+      font-style: italic;
+    }
     </style>
   </head>
   <body>
-    #{generateHTML comps}
-    <pre>#{show comps}</pre>
+    #{res}
   </body>
 </html>|]
     Left err -> putStrLn $ show err
