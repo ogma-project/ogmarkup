@@ -1,27 +1,31 @@
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
+
 module Ogmarkup.HTML (
   generateHTML,
   ) where
 
+import Text.Shakespeare.Text
+import Data.Text (Text, append)
 import Ogmarkup.Config
 import qualified Ogmarkup.Private.Ast as Ast
 import Ogmarkup.Private.Generator
 
-htmlPrintSpace :: Space -> String
+htmlPrintSpace :: Space -> Text
 htmlPrintSpace None = ""
 htmlPrintSpace Normal = " "
 htmlPrintSpace Nbsp = "&nbsp;"
 
-mkSpan :: String -> String
-mkSpan clss = "<span class=\"" ++ clss ++ "\">"
+mkSpan :: Text -> Text
+mkSpan clss = [st|<span class="#{clss}">|]
 
 htmlFrenchConf :: GenConf
 htmlFrenchConf = GenConf frenchTypo
                          "<p>"
                          "</p>"
-                         (\a -> mkSpan $ "dialogue by-" ++ a)
-                         (\_ -> "</span>")
-                         (\a -> mkSpan $ "thought by-" ++ a)
-                         (\_ -> "</span>")
+                         (\a -> mkSpan $ [st|dialogue by-#{a}|])
+                         (pure "</span>")
+                         (\a -> mkSpan $ [st|"thought by-#{a}|])
+                         (pure "</span>")
                          id
                          (mkSpan "reply")
                          "</span>"
@@ -33,5 +37,5 @@ htmlFrenchConf = GenConf frenchTypo
 
 -- | From an Ogma AST, generate a HTML body.
 generateHTML :: Ast.Document
-             -> String
+             -> Text
 generateHTML = generate htmlFrenchConf

@@ -1,5 +1,7 @@
 module Ogmarkup.Private.Ast where
 
+import Data.Text (Text)
+
 type Document = [Section]
 
 data Section =
@@ -11,8 +13,8 @@ type Paragraph = [Component]
 
 data Component =
     Teller [Format]
-  | Dialogue Reply String
-  | Thought Reply String
+  | Dialogue Reply Text
+  | Thought Reply Text
     deriving (Eq,Show)
 
 data Reply =
@@ -53,7 +55,7 @@ data Collection =
 -- | An Atom is the atomic component of a Ogmarkup document. It can
 --   be either a punctuation mark or a word, that is a string.
 data Atom =
-    Word String -- ^ A wrapped string
+    Word Text -- ^ A wrapped string
   | Punctuation Mark -- ^ Note that, by construction, 'OpenQuote' and
                      --   'CloseQuote' are not valid 'Mark' values
                      --   here.  Indeed, they are implicit with the

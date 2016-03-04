@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- | This module provides several parsers that can be used in order to
 --   extract the 'Ast' of an Ogmarkup document.
 --
@@ -5,6 +7,7 @@
 --   module.
 module Ogmarkup.Private.Parser where
 
+import Data.Text (Text, pack)
 import Text.ParserCombinators.Parsec
 
 import qualified Ogmarkup.Private.Ast as Ast
@@ -60,7 +63,7 @@ thought = talk '<' '>' Ast.Thought
 --   @constr@ (either 'Ast.Dialogue' or 'Ast.Thought').
 talk :: Char -- ^ A character to mark the begining of a reply
      -> Char -- ^ A character to mark the end of a reply
-     -> (Ast.Reply -> String -> Ast.Component) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation.
+     -> (Ast.Reply -> Text -> Ast.Component) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation.
      -> GenParser Char st Ast.Component
 talk c c' constructor = do
   rep <- reply c c'
@@ -69,7 +72,7 @@ talk c c' constructor = do
   author <- manyTill anyToken (char ')') <?> "Missing closing )"
   blank
 
-  return $ constructor rep author
+  return $ constructor rep (pack author)
 
 -- | 'reply' parses a 'Ast.Reply'.
 reply :: Char -> Char -> GenParser Char st Ast.Reply
@@ -142,7 +145,7 @@ word = do lookAhead anyToken -- not the end of the parser
 
           str <- manyTill anyToken (lookAhead $ try endOfWord)
 
-          return $ Ast.Word str
+          return $ Ast.Word (pack str)
   where
     specChar = "\"«»`+*[]<>|_"
 
@@ -160,7 +163,7 @@ longword :: GenParser Char st Ast.Atom
 longword = do char '`'
               notFollowedBy (char '`') <?> "empty raw string are not accepted"
               str <- manyTill anyToken (char '`')
-              return $ Ast.Word str
+              return $ Ast.Word (pack str)
 
 -- | See 'Ast.Punctuation'. Be aware that 'mark' does not parse the quotes
 --   because they are processed 'quote'.

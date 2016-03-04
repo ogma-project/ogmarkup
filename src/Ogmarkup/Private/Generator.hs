@@ -1,23 +1,26 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Ogmarkup.Private.Generator where
 
 import Control.Monad.State.Strict
 import Control.Monad.Reader
+import Data.Text (Text, append)
 
 import qualified Ogmarkup.Private.Ast as Ast
 import Ogmarkup.Config
 
-type Generator = StateT (String, Maybe Ast.Atom) (Reader GenConf) ()
+type Generator = StateT (Text, Maybe Ast.Atom) (Reader GenConf) ()
 
 genResetPrev :: Generator
 genResetPrev = do
   (str, _) <- get
   put (str, Nothing)
 
-genRawString :: String
-             -> Generator
-genRawString str' = do
+genRawText :: Text
+           -> Generator
+genRawText str' = do
   (str, maybePrev) <- get
-  put (str ++ str', maybePrev)
+  put (str `append` str', maybePrev)
 
 genAtom :: Ast.Atom
         -> Generator
@@ -28,9 +31,9 @@ genAtom text = do
 
   case maybePrev of
     Just prev ->
-      let str' = (ptrSpace $ max (afterAtom typo prev) (beforeAtom typo text)) ++ (normalizeAtom typo text) in
-        put (str ++ str', Just text)
-    Nothing -> put (str ++ normalizeAtom typo text, Just text)
+      let str' = (ptrSpace $ max (afterAtom typo prev) (beforeAtom typo text)) `append` (normalizeAtom typo text) in
+        put (str `append` str', Just text)
+    Nothing -> put (str `append` normalizeAtom typo text, Just text)
 
 genMaybeAtom :: Maybe Ast.Atom
              -> Generator
@@ -63,15 +66,15 @@ genFormat (Ast.Raw cs) = genCollections cs
 genFormat (Ast.Emph cs) = do
   conf <- ask
 
-  genRawString $ beginWeakEmph conf
+  genRawText $ beginWeakEmph conf
   genCollections cs
-  genRawString $ endWeakEmph conf
+  genRawText $ endWeakEmph conf
 genFormat (Ast.StrongEmph cs) = do
   conf <- ask
 
-  genRawString $ beginStrongEmph conf
+  genRawText $ beginStrongEmph conf
   genCollections cs
-  genRawString $ endStrongEmph conf
+  genRawText $ endStrongEmph conf
 
 genFormats :: [Ast.Format]
            -> Generator
@@ -89,27 +92,27 @@ genReply begin end (Ast.Simple d) = do
   er <- endReply <$> ask
 
   genMaybeAtom begin
-  genRawString br
+  genRawText br
   genFormats d
-  genRawString  er
+  genRawText  er
   genMaybeAtom end
 genReply begin end (Ast.WithSay d ws d') = do
   br <- beginReply <$> ask
   er <- endReply <$> ask
 
   genMaybeAtom begin
-  genRawString br
+  genRawText br
   genFormats d
-  genRawString er
+  genRawText er
 
   case d' of [] -> do
                genMaybeAtom end
                genFormats ws
              l -> do
                genFormats ws
-               genRawString br
+               genRawText br
                genFormats d'
-               genRawString er
+               genRawText er
                genMaybeAtom end
 
 genComponent :: Bool           -- ^ Was the last component an audible dialog?
@@ -121,9 +124,9 @@ genComponent p n (Ast.Dialogue d a) = do
   de <- endDialogue <$> ask
   auth <- authorNormalize <$> ask
 
-  genRawString . db . auth $ a
+  genRawText . db . auth $ a
   genReply (prevT p) (nextT n) d
-  genRawString . de . auth $ a
+  genRawText . de . auth $ a
   where
     prevT True = Just (Ast.Punctuation Ast.LongDash)
     prevT False = Just (Ast.Punctuation Ast.OpenQuote)
@@ -135,9 +138,9 @@ genComponent p n (Ast.Thought d a) = do
   te <- endThought <$> ask
   auth <- authorNormalize <$> ask
 
-  genRawString . tb . auth $ a
+  genRawText . tb . auth $ a
   genReply Nothing Nothing d
-  genRawString . te . auth $ a
+  genRawText . te . auth $ a
 genComponent p n (Ast.Teller fs) = do
   genFormats fs
 
@@ -147,9 +150,9 @@ genParagraph (h:r) = do
   begin <- beginParagraph <$> ask
   end <- endParagraph <$> ask
 
-  genRawString begin
+  genRawText begin
   recGen begin end False (willBeDialogue r) (h:r)
-  genRawString end
+  genRawText end
 
   where
     isDialogue (Ast.Dialogue _ _) = True
@@ -158,14 +161,14 @@ genParagraph (h:r) = do
     willBeDialogue (h:n:r) = isDialogue n
     willBeDialogue _ = False
 
-    recGen :: String
-           -> String
+    recGen :: Text
+           -> Text
            -> Bool
            -> Bool
            -> [Ast.Component]
            -> Generator
     recGen beg end p n (c:rst) = do
-      case (p, isDialogue c) of (True, True) -> do genRawString (end ++ beg)
+      case (p, isDialogue c) of (True, True) -> do genRawText (end `append` beg)
                                                    genResetPrev
                                 _ -> return ()
       genComponent p n c
@@ -178,12 +181,12 @@ genParagraphs (h:r) = do genParagraph h
 genParagraphs [] = return ()
 
 genSection :: Ast.Section -> Generator
-genSection (Ast.Story ps) = do genRawString "<div>"
+genSection (Ast.Story ps) = do genRawText "<div>"
                                genParagraphs ps
-                               genRawString "</div>"
-genSection (Ast.Aside ps) = do genRawString "<blockquote>"
+                               genRawText "</div>"
+genSection (Ast.Aside ps) = do genRawText "<blockquote>"
                                genParagraphs ps
-                               genRawString "</blockquote>"
+                               genRawText "</blockquote>"
 
 genDocument :: [Ast.Section] -> Generator
 genDocument (s:r) = do genSection s
@@ -192,6 +195,6 @@ genDocument [] = return ()
 
 generate :: GenConf
          -> Ast.Document
-         -> String
+         -> Text
 
 generate conf lst = fst $ runReader (execStateT (genDocument lst) ("", Nothing)) conf

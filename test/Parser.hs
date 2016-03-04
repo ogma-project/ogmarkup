@@ -1,8 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Parser where
 
 import Test.Hspec
 import Text.ParserCombinators.Parsec
 import Data.Either
+import Data.Text (Text)
 
 import qualified Ogmarkup.Private.Ast as Ast
 import qualified Ogmarkup.Private.Parser as Parser
