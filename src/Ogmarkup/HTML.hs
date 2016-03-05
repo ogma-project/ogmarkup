@@ -9,8 +9,8 @@ import Data.Text (Text)
 import Ogmarkup.Typography
 import Ogmarkup.Config
 import qualified Ogmarkup.Private.Ast as Ast
-import Ogmarkup.Private.Generator
-import Ogmarkup.Private.Parser
+import qualified Ogmarkup.Private.Generator as Generator
+import qualified Ogmarkup.Private.Parser as Parser
 import Text.ParserCombinators.Parsec
 
 htmlPrintSpace :: Space -> Text
@@ -21,8 +21,8 @@ htmlPrintSpace Nbsp = "&nbsp;"
 mkSpan :: Text -> Text
 mkSpan clss = [st|<span class="#{clss}">|]
 
-htmlConf :: Typography
-         -> GenConf
+htmlConf :: Typography Text
+         -> GenConf Text
 htmlConf typo =
   GenConf typo
           (\doc -> [st|<article>#{doc}</article>|])
@@ -40,9 +40,9 @@ htmlConf typo =
           htmlPrintSpace
 
 -- | From an Ogma AST, generate a HTML body.
-generateHTML :: Typography
+generateHTML :: Typography Text
              -> String
              -> Either ParseError Text
-generateHTML typo input = let res = parse document "" input
-                          in case res of Right ast -> Right $ generate (htmlConf typo) ast
+generateHTML typo input = let res = parse Parser.document "" input
+                          in case res of Right ast -> Right $ Generator.generate (htmlConf typo) ast
                                          Left err -> Left err
