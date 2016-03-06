@@ -4,147 +4,167 @@ module Ogmarkup.Private.Generator where
 
 import Control.Monad.State.Strict
 import Control.Monad.Reader
-import Data.Text (Text, append)
+import Data.Monoid
 
 import qualified Ogmarkup.Private.Ast as Ast
 import Ogmarkup.Typography
 import Ogmarkup.Config
 
-type Generator = StateT (Text, Maybe Ast.Atom) (Reader GenConf) ()
+type Generator a = StateT (a, Maybe (Ast.Atom a))
+                          (Reader (GenConf a))
+                          ()
 
-genApply :: (Text -> Text) -> Generator -> Generator
-genApply app gen = do
+apply :: Monoid a
+      => (a -> a)
+      -> Generator a
+      -> Generator a
+apply app gen = do
   (str, maybe) <- get
-  put ("", maybe)
+  put (mempty, maybe)
   gen
   (str', maybe') <- get
-  put (str `append` (app str'), maybe')
+  put (str `mappend` (app str'), maybe')
 
-genResetPrev :: Generator
-genResetPrev = do
+reset :: Generator a
+reset = do
   (str, _) <- get
   put (str, Nothing)
 
-genRawText :: Text
-           -> Generator
-genRawText str' = do
+raw :: Monoid a
+    => a
+    -> Generator a
+raw str' = do
   (str, maybePrev) <- get
-  put (str `append` str', maybePrev)
+  put (str `mappend` str', maybePrev)
 
-genAtom :: Ast.Atom
-        -> Generator
-genAtom text = do
+atom :: Monoid a
+     => Ast.Atom a
+     -> Generator a
+atom text = do
   (str, maybePrev) <- get
   typo <- (typography <$> ask)
   ptrSpace <- (printSpace <$> ask)
 
   case maybePrev of
     Just prev ->
-      let str' = (ptrSpace $ max (afterAtom typo prev) (beforeAtom typo text)) `append` (normalizeAtom typo text) in
-        put (str `append` str', Just text)
-    Nothing -> put (str `append` normalizeAtom typo text, Just text)
+      let
+        spc =  (ptrSpace $ max (afterAtom typo prev) (beforeAtom typo text))
+        str' = spc `mappend` (normalizeAtom typo text)
+      in
+        put (str `mappend` str', Just text)
+    Nothing -> put (str `mappend` normalizeAtom typo text, Just text)
 
-genMaybeAtom :: Maybe Ast.Atom
-             -> Generator
-genMaybeAtom (Just text) = genAtom text
-genMaybeAtom Nothing = return ()
+maybeAtom :: Monoid a
+          => Maybe (Ast.Atom a)
+          -> Generator a
+maybeAtom (Just text) = atom text
+maybeAtom Nothing = return ()
 
-genAtoms :: [Ast.Atom]
-         -> Generator
-genAtoms (f:rst) = do
-  genAtom f
-  genAtoms rst
-genAtoms [] = return ()
+atoms :: Monoid a
+      => [Ast.Atom a]
+      -> Generator a
+atoms (f:rst) = do
+  atom f
+  atoms rst
+atoms [] = return ()
 
-genCollection :: Ast.Collection
-              -> Generator
-genCollection (Ast.Quote atoms) = do genAtom (Ast.Punctuation Ast.OpenQuote)
-                                     genAtoms atoms
-                                     genAtom (Ast.Punctuation Ast.CloseQuote)
-genCollection (Ast.Text atoms) = genAtoms atoms
+collection :: Monoid a
+           => Ast.Collection a
+           -> Generator a
+collection (Ast.Quote as) = do atom (Ast.Punctuation Ast.OpenQuote)
+                               atoms as
+                               atom (Ast.Punctuation Ast.CloseQuote)
 
-genCollections :: [Ast.Collection]
-               -> Generator
-genCollections (f:rst) = do genCollection f
-                            genCollections rst
-genCollections [] = return ()
+collection (Ast.Text as) = atoms as
 
-genFormat :: Ast.Format
-          -> Generator
-genFormat (Ast.Raw cs) = genCollections cs
-genFormat (Ast.Emph cs) = do
-  tag <- emphTag <$> ask
+collections :: Monoid a
+            => [Ast.Collection a]
+            -> Generator a
+collections (f:rst) = do collection f
+                         collections rst
+collections [] = return ()
 
-  genApply tag (genCollections cs)
-genFormat (Ast.StrongEmph cs) = do
-  tag <- strongEmphTag <$> ask
+format :: Monoid a
+       => Ast.Format a
+       -> Generator a
+format (Ast.Raw cs) = collections cs
+format (Ast.Emph cs) = do
+  temp <- emphTemplate <$> ask
 
-  genApply tag (genCollections cs)
+  apply temp (collections cs)
+format (Ast.StrongEmph cs) = do
+  temp <- strongEmphTemplate <$> ask
 
-genFormats :: [Ast.Format]
-           -> Generator
-genFormats (f:rst) = do
-  genFormat f
-  genFormats rst
-genFormats [] = return ()
+  apply temp (collections cs)
 
-genReply :: Maybe Ast.Atom
-         -> Maybe Ast.Atom
-         -> Ast.Reply
-         -> Generator
-genReply begin end (Ast.Simple d) = do
-  tag <- replyTag <$> ask
+formats :: Monoid a
+           => [Ast.Format a]
+           -> Generator a
+formats (f:rst) = do
+  format f
+  formats rst
+formats [] = return ()
 
-  genMaybeAtom begin
-  genApply tag (genFormats d)
-  genMaybeAtom end
-genReply begin end (Ast.WithSay d ws d') = do
-  tag <- replyTag <$> ask
+reply :: Monoid a
+      => Maybe (Ast.Atom a)
+      -> Maybe (Ast.Atom a)
+      -> Ast.Reply a
+      -> Generator a
+reply begin end (Ast.Simple d) = do
+  temp <- replyTemplate <$> ask
 
-  genMaybeAtom begin
-  genApply tag (genFormats d)
+  maybeAtom begin
+  apply temp (formats d)
+  maybeAtom end
+reply begin end (Ast.WithSay d ws d') = do
+  temp <- replyTemplate <$> ask
+
+  maybeAtom begin
+  apply temp (formats d)
 
   case d' of [] -> do
-               genMaybeAtom end
-               genFormats ws
+               maybeAtom end
+               formats ws
              l -> do
-               genFormats ws
-               genApply tag (genFormats d')
-               genMaybeAtom end
+               formats ws
+               apply temp (formats d')
+               maybeAtom end
 
-genComponent :: Bool           -- ^ Was the last component an audible dialog?
-             -> Bool           -- ^ Will the next component be an audible dialog?
-             -> Ast.Component  -- ^ The current to process.
-             -> Generator
-genComponent p n (Ast.Dialogue d a) = do
+component :: Monoid a
+          => Bool           -- ^ Was the last component an audible dialog?
+          -> Bool           -- ^ Will the next component be an audible dialog?
+          -> Ast.Component a  -- ^ The current to process.
+          -> Generator a
+component p n (Ast.Dialogue d a) = do
   conf <- ask
 
   let
     open = openDialogue . typography $ conf
     close = closeDialogue . typography $ conf
     auth = authorNormalize conf
-    tag = (dialogueTag conf) (auth a)
+    temp = (dialogueTemplate conf) (auth a)
 
-  genApply tag (genReply (Ast.Punctuation <$> open p) (Ast.Punctuation <$> close p) d)
+  apply temp (reply (Ast.Punctuation <$> open p) (Ast.Punctuation <$> close p) d)
 
-genComponent p n (Ast.Thought d a) = do
+component p n (Ast.Thought d a) = do
   conf <- ask
 
   let 
     auth = authorNormalize conf
-    tag = (dialogueTag conf) (auth a)
+    temp = (dialogueTemplate conf) (auth a)
 
-  genApply tag (genReply Nothing Nothing d)
-genComponent p n (Ast.Teller fs) = do
-  genFormats fs
+  apply temp (reply Nothing Nothing d)
+component p n (Ast.Teller fs) = do
+  formats fs
 
-genParagraph :: [Ast.Component]
-             -> Generator
-genParagraph l@(h:r) = do
-  tag <- paragraphTag <$> ask
+paragraph :: Monoid a
+          => [Ast.Component a]
+          -> Generator a
+paragraph l@(h:r) = do
+  temp <- paragraphTemplate <$> ask
   between <- betweenDialogue <$> ask
 
-  genApply tag (recGen between False (willBeDialogue l) (h:r))
+  apply temp (recGen between False (willBeDialogue l) (h:r))
 
   where
     isDialogue (Ast.Dialogue _ _) = True
@@ -153,45 +173,55 @@ genParagraph l@(h:r) = do
     willBeDialogue (h:n:r) = isDialogue n
     willBeDialogue _ = False
 
-    recGen :: Text
+    recGen :: Monoid a
+           => a
            -> Bool
            -> Bool
-           -> [Ast.Component]
-           -> Generator
+           -> [Ast.Component a]
+           -> Generator a
     recGen between p n (c:rst) = do
-      case (p, isDialogue c) of (True, True) -> do genRawText between
-                                                   genResetPrev
+      case (p, isDialogue c) of (True, True) -> do raw between
+                                                   reset
                                 _ -> return ()
-      genComponent p n c
+      component p n c
       recGen between (isDialogue c) (willBeDialogue rst) rst
     recGen _ _ _ [] = return ()
 
-genParagraphs :: [Ast.Paragraph] -> Generator
-genParagraphs (h:r) = do genParagraph h
-                         genResetPrev
-                         genParagraphs r
-genParagraphs [] = return ()
+paragraphs :: Monoid a
+           => [Ast.Paragraph a]
+           -> Generator a
+paragraphs (h:r) = do paragraph h
+                      reset
+                      paragraphs r
+paragraphs [] = return ()
 
-genSection :: Ast.Section -> Generator
-genSection (Ast.Story ps) = do tag <- storyTag <$> ask
+section :: Monoid a
+        => Ast.Section a
+        -> Generator a
+section (Ast.Story ps) = do temp <- storyTemplate <$> ask
 
-                               genApply tag (genParagraphs ps)
-genSection (Ast.Aside ps) = do tag <- asideTag <$> ask
+                            apply temp (paragraphs ps)
+section (Ast.Aside ps) = do temp <- asideTemplate <$> ask
 
-                               genApply tag (genParagraphs ps)
+                            apply temp (paragraphs ps)
 
-genSections :: [Ast.Section] -> Generator
-genSections (s:r) = do genSection s
-                       genSections r
-genSections [] = return ()
+sections :: Monoid a
+         => [Ast.Section a]
+         -> Generator a
+sections (s:r) = do section s
+                    sections r
+sections [] = return ()
 
-genDocument :: Ast.Document -> Generator
-genDocument d = do tag <- documentTag <$> ask
+document :: Monoid a
+          => Ast.Document a
+         -> Generator a
+document d = do temp <- documentTemplate <$> ask
 
-                   genApply tag (genSections d)
+                apply temp (sections d)
 
-generate :: GenConf
-         -> Ast.Document
-         -> Text
+generate :: Monoid a
+         => GenConf a
+         -> Ast.Document a
+         -> a
 
-generate conf lst = fst $ runReader (execStateT (genDocument lst) ("", Nothing)) conf
+generate conf lst = fst $ runReader (execStateT (document lst) (mempty, Nothing)) conf

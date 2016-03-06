@@ -2,7 +2,7 @@
 
 module Ogmarkup.Typography where
 
-import Data.Text (Text)
+import Data.String
 import qualified Ogmarkup.Private.Ast as Ast
 
 -- | Deal with typographic spaces, especially when it comes to
@@ -17,38 +17,38 @@ data Space =
 
 -- | A Typography is a data type that tells the caller what space
 --   she should privileged before and after a text.
-data Typography = Typography {
-  decide :: Ast.Atom -> (Space, Space, Text),
+data Typography a = Typography {
+  decide :: Ast.Atom a -> (Space, Space, a),
   openDialogue :: Bool -> Maybe Ast.Mark,
   closeDialogue :: Bool -> Maybe Ast.Mark
   }
 
 -- | From a Typography, it gives the space to privilege before the
 --   input Text.
-beforeAtom :: Typography
-           -> Ast.Atom
+beforeAtom :: Typography a
+           -> Ast.Atom a
            -> Space
 beforeAtom t o = case decide t o of (r, _, _) -> r
 
 -- | From a Typography, it gives the space to privilege after the
 --   input Text.
-afterAtom :: Typography
-          -> Ast.Atom
+afterAtom :: Typography a
+          -> Ast.Atom a
           -> Space
 afterAtom t o = case decide t o of (_, r, _) -> r
 
 -- | Normalize the input in order to add it to a generated Text.
-normalizeAtom :: Typography
-              -> Ast.Atom
-              -> Text
+normalizeAtom :: Typography a
+              -> Ast.Atom a
+              -> a
 normalizeAtom t o = case decide t o of (_, _, r) -> r
 
 -- | The French typography. It can be used with several generation
 -- approach, as it stay very generic.
-frenchTypo :: Typography
+frenchTypo :: IsString a => Typography a
 frenchTypo = Typography t prevT nextT
   where
-    t :: Ast.Atom -> (Space, Space, Text)
+    t :: IsString a => Ast.Atom a -> (Space, Space, a)
     t (Ast.Word w) = (Normal, Normal, w)
     t (Ast.Punctuation Ast.Semicolon) = (Nbsp, Normal, ";")
     t (Ast.Punctuation Ast.Colon) = (Nbsp, Normal, ":")
@@ -69,10 +69,10 @@ frenchTypo = Typography t prevT nextT
     nextT True = Nothing
     nextT False = Just (Ast.CloseQuote)
 
-englishTypo :: Typography
+englishTypo :: IsString a => Typography a
 englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuote)
   where
-    t :: Ast.Atom -> (Space, Space, Text)
+    t :: IsString a => Ast.Atom a -> (Space, Space, a)
     t (Ast.Word w) = (Normal, Normal, w)
     t (Ast.Punctuation Ast.Semicolon) = (None, Normal, ";")
     t (Ast.Punctuation Ast.Colon) = (None, Normal, ":")

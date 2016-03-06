@@ -7,13 +7,14 @@
 --   module.
 module Ogmarkup.Private.Parser where
 
-import Data.Text (Text, pack)
 import Text.ParserCombinators.Parsec
+import Data.String
 
 import qualified Ogmarkup.Private.Ast as Ast
 
 -- | See 'Ast.Document'.
-document :: GenParser Char st Ast.Document
+document :: IsString a
+         => GenParser Char st (Ast.Document a)
 document = do spaces
               sects <- many1 section
               eof
@@ -21,11 +22,13 @@ document = do spaces
               return sects
 
 -- | See 'Ast.Section'.
-section :: GenParser Char st Ast.Section
+section :: IsString a
+           => GenParser Char st (Ast.Section a)
 section = aside <|> story
 
 -- | See 'Ast.Aside'.
-aside :: GenParser Char st Ast.Section
+aside :: IsString a
+         => GenParser Char st (Ast.Section a)
 aside = do asideSeparator
            spaces
            ps <- many1 (paragraph <* spaces)
@@ -36,35 +39,42 @@ aside = do asideSeparator
            return $ Ast.Aside ps
 
 -- | See 'Ast.Story'.
-story :: GenParser Char st Ast.Section
+story :: IsString a
+      => GenParser Char st (Ast.Section a)
 story = many1 (paragraph <* spaces) >>= return . Ast.Story
 
 -- | See 'Ast.Paragraph'.
-paragraph :: GenParser Char st Ast.Paragraph
+paragraph :: IsString a
+          => GenParser Char st (Ast.Paragraph a)
 paragraph = many1 component <* blank
 
 -- | See 'Ast.Component'.
-component :: GenParser Char st Ast.Component
+component :: IsString a
+          => GenParser Char st (Ast.Component a)
 component = dialogue <|> thought <|> teller
 
 -- | See 'Ast.Teller'.
-teller :: GenParser Char st Ast.Component
+teller :: IsString a
+       => GenParser Char st (Ast.Component a)
 teller = many1 format >>= return . Ast.Teller
 
 -- | See 'Ast.Dialogue'.
-dialogue :: GenParser Char st Ast.Component
+dialogue :: IsString a
+         => GenParser Char st (Ast.Component a)
 dialogue = talk '[' ']' Ast.Dialogue
 
 -- | See 'Ast.Thought'.
-thought :: GenParser Char st Ast.Component
+thought :: IsString a
+        => GenParser Char st (Ast.Component a)
 thought = talk '<' '>' Ast.Thought
 
 -- | @'talk' c c' constr@ wrap a reply surrounded by @c@ and @c'@ inside
 --   @constr@ (either 'Ast.Dialogue' or 'Ast.Thought').
-talk :: Char -- ^ A character to mark the begining of a reply
+talk :: IsString a
+     => Char -- ^ A character to mark the begining of a reply
      -> Char -- ^ A character to mark the end of a reply
-     -> (Ast.Reply -> Text -> Ast.Component) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation.
-     -> GenParser Char st Ast.Component
+     -> (Ast.Reply a -> a -> Ast.Component a) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation.
+     -> GenParser Char st (Ast.Component a)
 talk c c' constructor = do
   rep <- reply c c'
   char '(' <?> "Missing character name"
@@ -72,10 +82,13 @@ talk c c' constructor = do
   author <- manyTill anyToken (char ')') <?> "Missing closing )"
   blank
 
-  return $ constructor rep (pack author)
+  return $ constructor rep (fromString author)
 
 -- | 'reply' parses a 'Ast.Reply'.
-reply :: Char -> Char -> GenParser Char st Ast.Reply
+reply :: IsString a
+      => Char
+      -> Char
+      -> GenParser Char st (Ast.Reply a)
 reply c c' = do char c
                 p1 <- many1 format
                 x <- oneOf ['|', c']
@@ -90,15 +103,18 @@ reply c c' = do char c
                           _ -> return $ Ast.Simple p1
 
 -- | See 'Ast.Format'.
-format :: GenParser Char st Ast.Format
+format :: IsString a
+       => GenParser Char st (Ast.Format a)
 format = try strongEmph <|> emph <|> raw
 
 -- | See 'Ast.Raw'.
-raw :: GenParser Char st Ast.Format
+raw :: IsString a
+    => GenParser Char st (Ast.Format a)
 raw = many1 collection >>= return . Ast.Raw
 
 -- | See 'Ast.Emph'.
-emph :: GenParser Char st Ast.Format
+emph :: IsString a
+     => GenParser Char st (Ast.Format a)
 emph = do char '*'
           blank
           col <- many1 collection
@@ -108,7 +124,8 @@ emph = do char '*'
           return $ Ast.Emph col
 
 -- | See 'Ast.StrongEmph'.
-strongEmph :: GenParser Char st Ast.Format
+strongEmph :: IsString a
+           => GenParser Char st (Ast.Format a)
 strongEmph = do char '+'
                 blank
                 col <- many1 collection
@@ -118,11 +135,13 @@ strongEmph = do char '+'
                 return $ Ast.StrongEmph col
 
 -- | See 'Ast.Collection'.
-collection :: GenParser Char st Ast.Collection
+collection :: IsString a
+           => GenParser Char st (Ast.Collection a)
 collection = quote <|> text
 
 -- | See 'Ast.Quote'.
-quote :: GenParser Char st Ast.Collection
+quote :: IsString a
+      => GenParser Char st (Ast.Collection a)
 quote = do openQuote
            atoms <- many1 atom
            closeQuote <?> "A previously opened quote needs to be cloded"
@@ -130,22 +149,25 @@ quote = do openQuote
            return $ Ast.Quote atoms
 
 -- | See 'Ast.Text'.
-text :: GenParser Char st Ast.Collection
+text :: IsString a
+     => GenParser Char st (Ast.Collection a)
 text = many1 atom >>= return . Ast.Text
 
 -- | See 'Ast.Atom'.
-atom :: GenParser Char st Ast.Atom
+atom :: IsString a
+     => GenParser Char st (Ast.Atom a)
 atom = (mark <|> longword <|> word) <* blank
 
 -- | See 'Ast.Word'. This parser does not consume the following spaces, so
 --   the caller needs to take care of it.
-word :: GenParser Char st Ast.Atom
+word :: IsString a
+     => GenParser Char st (Ast.Atom a)
 word = do lookAhead anyToken -- not the end of the parser
           notFollowedBy endOfWord
 
           str <- manyTill anyToken (lookAhead $ try endOfWord)
 
-          return $ Ast.Word (pack str)
+          return $ Ast.Word (fromString str)
   where
     specChar = "\"«»`+*[]<>|_"
 
@@ -159,15 +181,16 @@ word = do lookAhead anyToken -- not the end of the parser
 --
 --   Therefore, @`@ can be used to insert normally reserved symbol
 --   inside a generated document.
-longword :: GenParser Char st Ast.Atom
+longword :: IsString a
+         => GenParser Char st (Ast.Atom a)
 longword = do char '`'
               notFollowedBy (char '`') <?> "empty raw string are not accepted"
               str <- manyTill anyToken (char '`')
-              return $ Ast.Word (pack str)
+              return $ Ast.Word (fromString str)
 
 -- | See 'Ast.Punctuation'. Be aware that 'mark' does not parse the quotes
 --   because they are processed 'quote'.
-mark :: GenParser Char st Ast.Atom
+mark :: GenParser Char st (Ast.Atom a)
 mark = (semicolon
         <|> colon
         <|> question
