@@ -19,6 +19,7 @@ source-repository head
 
 library
     exposed-modules:
+        Text.Ogmarkup
         Text.Ogmarkup.Private.Parser
         Text.Ogmarkup.Private.Ast
         Text.Ogmarkup.Private.Generator
