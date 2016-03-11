@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Ogmarkup.Private.Generator where
+module Text.Ogmarkup.Private.Generator where
 
 import           Control.Monad.Reader
 import           Control.Monad.State.Strict
 import           Data.Monoid
 
-import           Ogmarkup.Config
-import qualified Ogmarkup.Private.Ast       as Ast
-import           Ogmarkup.Typography
+import           Text.Ogmarkup.Config
+import qualified Text.Ogmarkup.Private.Ast       as Ast
+import           Text.Ogmarkup.Typography
 
 type Generator a = StateT (a, Maybe (Ast.Atom a))
                           (Reader (GenConf a))

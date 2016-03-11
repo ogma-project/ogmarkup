@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Ogmarkup.Typography where
+module Text.Ogmarkup.Typography where
 
 import           Data.String
-import qualified Ogmarkup.Private.Ast as Ast
+import qualified Text.Ogmarkup.Private.Ast as Ast
 
 -- | Deal with typographic spaces, especially when it comes to
 --   separate two texts. Because Space derives Ord, it is possible

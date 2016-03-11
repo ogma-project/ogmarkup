@@ -1,22 +1,22 @@
-{-# LANGUAGE QuasiQuotes, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
 
-import Ogmarkup.Typography
-import Ogmarkup.HTML
-import Ogmarkup.Private.Ast
-import Ogmarkup.Private.Parser
+import           Text.Ogmarkup.HTML
+import           Text.Ogmarkup.Private.Ast
+import           Text.Ogmarkup.Private.Parser
+import           Text.Ogmarkup.Typography
 
-import Data.Text (Text)
-import Text.Shakespeare.Text
-import qualified Data.Text.IO as TIO
-import Text.ParserCombinators.Parsec
-import System.IO
+import           Data.Text                     (Text)
+import qualified Data.Text.IO                  as TIO
+import           System.IO
+import           Text.ParserCombinators.Parsec
+import           Text.Shakespeare.Text
 
 main :: IO ()
 main = do
   input <- readFile "examples/sample.up"
   case generateHTML frenchTypo input of
-    Right res -> do
-      TIO.putStrLn [st|<html>
+    Right res -> TIO.putStrLn [st|<html>
   <head>
     <meta charset=utf-8>
     <style>
@@ -44,4 +44,4 @@ main = do
     #{res}
   </body>
 </html>|]
-    Left err -> putStrLn $ show err
+    Left err -> print err

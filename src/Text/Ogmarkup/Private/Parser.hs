@@ -5,13 +5,13 @@
 --
 --   Please consider that only 'document' should be used outside this
 --   module.
-module Ogmarkup.Private.Parser where
+module Text.Ogmarkup.Private.Parser where
 
 import           Control.Monad
 import           Data.String
 import           Text.ParserCombinators.Parsec
 
-import qualified Ogmarkup.Private.Ast          as Ast
+import qualified Text.Ogmarkup.Private.Ast     as Ast
 
 -- | See 'Ast.Document'.
 document :: IsString a

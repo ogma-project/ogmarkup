@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Ogmarkup.Config where
+module Text.Ogmarkup.Config where
 
 import           Data.Monoid
-import           Data.Text           (Text)
-import           Ogmarkup.Typography
+import           Data.Text                (Text)
+import           Text.Ogmarkup.Typography
 
 type Template a = a -> a
 

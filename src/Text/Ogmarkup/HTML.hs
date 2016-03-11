@@ -1,17 +1,18 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
 
-module Ogmarkup.HTML (
+module Text.Ogmarkup.HTML (
   generateHTML,
   ) where
 
-import Text.Shakespeare.Text
-import Data.Text (Text)
-import Ogmarkup.Typography
-import Ogmarkup.Config
-import qualified Ogmarkup.Private.Ast as Ast
-import qualified Ogmarkup.Private.Generator as Generator
-import qualified Ogmarkup.Private.Parser as Parser
-import Text.ParserCombinators.Parsec
+import           Data.Text                       (Text)
+import           Text.Ogmarkup.Config
+import qualified Text.Ogmarkup.Private.Ast       as Ast
+import qualified Text.Ogmarkup.Private.Generator as Generator
+import qualified Text.Ogmarkup.Private.Parser    as Parser
+import           Text.Ogmarkup.Typography
+import           Text.ParserCombinators.Parsec
+import           Text.Shakespeare.Text
 
 htmlPrintSpace :: Space -> Text
 htmlPrintSpace None = ""
