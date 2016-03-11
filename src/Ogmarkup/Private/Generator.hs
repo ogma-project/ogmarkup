@@ -2,13 +2,13 @@
 
 module Ogmarkup.Private.Generator where
 
-import Control.Monad.State.Strict
-import Control.Monad.Reader
-import Data.Monoid
+import           Control.Monad.Reader
+import           Control.Monad.State.Strict
+import           Data.Monoid
 
-import qualified Ogmarkup.Private.Ast as Ast
-import Ogmarkup.Typography
-import Ogmarkup.Config
+import           Ogmarkup.Config
+import qualified Ogmarkup.Private.Ast       as Ast
+import           Ogmarkup.Typography
 
 type Generator a = StateT (a, Maybe (Ast.Atom a))
                           (Reader (GenConf a))
@@ -23,7 +23,7 @@ apply app gen = do
   put (mempty, maybe)
   gen
   (str', maybe') <- get
-  put (str `mappend` (app str'), maybe')
+  put (str `mappend` app str', maybe')
 
 reset :: Generator a
 reset = do
@@ -42,14 +42,14 @@ atom :: Monoid a
      -> Generator a
 atom text = do
   (str, maybePrev) <- get
-  typo <- (typography <$> ask)
-  ptrSpace <- (printSpace <$> ask)
+  typo <- typography <$> ask
+  ptrSpace <- printSpace <$> ask
 
   case maybePrev of
     Just prev ->
       let
         spc =  (ptrSpace $ max (afterAtom typo prev) (beforeAtom typo text))
-        str' = spc `mappend` (normalizeAtom typo text)
+        str' = spc `mappend` normalizeAtom typo text
       in
         put (str `mappend` str', Just text)
     Nothing -> put (str `mappend` normalizeAtom typo text, Just text)
@@ -142,20 +142,19 @@ component p n (Ast.Dialogue d a) = do
     open = openDialogue . typography $ conf
     close = closeDialogue . typography $ conf
     auth = authorNormalize conf
-    temp = (dialogueTemplate conf) (auth a)
+    temp = dialogueTemplate conf $ auth a
 
   apply temp (reply (Ast.Punctuation <$> open p) (Ast.Punctuation <$> close p) d)
 
 component p n (Ast.Thought d a) = do
   conf <- ask
 
-  let 
+  let
     auth = authorNormalize conf
-    temp = (dialogueTemplate conf) (auth a)
+    temp = dialogueTemplate conf (auth a)
 
   apply temp (reply Nothing Nothing d)
-component p n (Ast.Teller fs) = do
-  formats fs
+component p n (Ast.Teller fs) = formats fs
 
 paragraph :: Monoid a
           => [Ast.Component a]
