@@ -2,7 +2,7 @@
 
 module Ogmarkup.Typography where
 
-import Data.String
+import           Data.String
 import qualified Ogmarkup.Private.Ast as Ast
 
 -- | Deal with typographic spaces, especially when it comes to
@@ -18,8 +18,8 @@ data Space =
 -- | A Typography is a data type that tells the caller what space
 --   she should privileged before and after a text.
 data Typography a = Typography {
-  decide :: Ast.Atom a -> (Space, Space, a),
-  openDialogue :: Bool -> Maybe Ast.Mark,
+  decide        :: Ast.Atom a -> (Space, Space, a),
+  openDialogue  :: Bool -> Maybe Ast.Mark,
   closeDialogue :: Bool -> Maybe Ast.Mark
   }
 
@@ -63,11 +63,11 @@ frenchTypo = Typography t prevT nextT
     t (Ast.Punctuation Ast.Point) = (None, Normal, ".")
     t (Ast.Punctuation Ast.SuspensionPoints) = (None, Normal, "…")
 
-    prevT True = Just (Ast.LongDash)
-    prevT False = Just (Ast.OpenQuote)
+    prevT True = Just Ast.LongDash
+    prevT False = Just Ast.OpenQuote
 
     nextT True = Nothing
-    nextT False = Just (Ast.CloseQuote)
+    nextT False = Just Ast.CloseQuote
 
 englishTypo :: IsString a => Typography a
 englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuote)

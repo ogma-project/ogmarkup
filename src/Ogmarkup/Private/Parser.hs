@@ -7,10 +7,11 @@
 --   module.
 module Ogmarkup.Private.Parser where
 
-import Text.ParserCombinators.Parsec
-import Data.String
+import           Control.Monad
+import           Data.String
+import           Text.ParserCombinators.Parsec
 
-import qualified Ogmarkup.Private.Ast as Ast
+import qualified Ogmarkup.Private.Ast          as Ast
 
 -- | See 'Ast.Document'.
 document :: IsString a
@@ -33,7 +34,7 @@ aside = do asideSeparator
            spaces
            ps <- many1 (paragraph <* spaces)
            asideSeparator
-           manyTill space ((skip $ char '\n') <|> eof)
+           manyTill space (skip (char '\n') <|> eof)
            spaces
 
            return $ Ast.Aside ps
@@ -41,7 +42,7 @@ aside = do asideSeparator
 -- | See 'Ast.Story'.
 story :: IsString a
       => GenParser Char st (Ast.Section a)
-story = many1 (paragraph <* spaces) >>= return . Ast.Story
+story = Ast.Story `fmap` many1 (paragraph <* spaces)
 
 -- | See 'Ast.Paragraph'.
 paragraph :: IsString a
@@ -56,7 +57,7 @@ component = dialogue <|> thought <|> teller
 -- | See 'Ast.Teller'.
 teller :: IsString a
        => GenParser Char st (Ast.Component a)
-teller = many1 format >>= return . Ast.Teller
+teller = Ast.Teller `fmap` many1 format
 
 -- | See 'Ast.Dialogue'.
 dialogue :: IsString a
@@ -110,7 +111,7 @@ format = try strongEmph <|> emph <|> raw
 -- | See 'Ast.Raw'.
 raw :: IsString a
     => GenParser Char st (Ast.Format a)
-raw = many1 collection >>= return . Ast.Raw
+raw = Ast.Raw `fmap` many1 collection
 
 -- | See 'Ast.Emph'.
 emph :: IsString a
@@ -151,7 +152,7 @@ quote = do openQuote
 -- | See 'Ast.Text'.
 text :: IsString a
      => GenParser Char st (Ast.Collection a)
-text = many1 atom >>= return . Ast.Text
+text = Ast.Text `fmap` many1 atom
 
 -- | See 'Ast.Atom'.
 atom :: IsString a
@@ -172,7 +173,7 @@ word = do lookAhead anyToken -- not the end of the parser
     specChar = "\"«»`+*[]<>|_"
 
     endOfWord :: GenParser Char st ()
-    endOfWord =     eof <|> skip space <|> (skip $ oneOf specChar) <|> (skip mark)
+    endOfWord =     eof <|> skip space <|> skip (oneOf specChar) <|> skip mark
 
 -- | Wrap a raw string surrounded by @`@ inside a 'Ast.Word'.
 --
@@ -191,17 +192,16 @@ longword = do char '`'
 -- | See 'Ast.Punctuation'. Be aware that 'mark' does not parse the quotes
 --   because they are processed 'quote'.
 mark :: GenParser Char st (Ast.Atom a)
-mark = (semicolon
+mark = Ast.Punctuation `fmap` (semicolon
         <|> colon
         <|> question
         <|> exclamation
-        <|> (try longDash)
-        <|> (try dash)
+        <|> try longDash
+        <|> try dash
         <|> hyphen
         <|> comma
         <|> try suspensionPoints
         <|> point)
-            >>= return . Ast.Punctuation
   where
     parseMark p m = p >> return m
 
@@ -214,18 +214,18 @@ mark = (semicolon
     hyphen           = parseMark (char '-') Ast.Hyphen
     comma            = parseMark (char ',') Ast.Comma
     point            = parseMark (char '.') Ast.Point
-    suspensionPoints = parseMark (string ".." >> (many $ char '.')) Ast.SuspensionPoints
+    suspensionPoints = parseMark (string ".." >> many (char '.')) Ast.SuspensionPoints
 
 -- | See 'Ast.OpenQuote'. This parser consumes the following blank (see 'blank')
 --   and skip the result.
 openQuote :: GenParser Char st ()
-openQuote = do (char '«' <|> char '"')
+openQuote = do char '«' <|> char '"'
                blank
 
 -- | See 'Ast.CloseQuote'. This parser consumes the following blank (see 'blank')
 --   and skip the result.
 closeQuote :: GenParser Char st ()
-closeQuote = do (char '»' <|> char '"')
+closeQuote = do char '»' <|> char '"'
                 blank
 
 -- | An aside section (see 'Ast.Aside') is a particular region
@@ -245,13 +245,13 @@ blank :: GenParser Char st ()
 blank = optional (notFollowedBy endOfParagraph >> spaces)
   where
     betweenTwoSections :: GenParser Char st ()
-    betweenTwoSections = do count 2 $ manyTill space (eof <|> (skip $ char '\n'))
+    betweenTwoSections = do count 2 $ manyTill space (eof <|> skip (char '\n'))
                             spaces
     endOfParagraph :: GenParser Char st ()
-    endOfParagraph = do try betweenTwoSections
+    endOfParagraph = try betweenTwoSections
                         <|> asideSeparator -- maybe we need to add (spaces *> ... <* spaces)
                         <|> eof
 
 -- | @skip p@ parses @p@ and skip the result
 skip :: GenParser Char st a -> GenParser Char st ()
-skip p = p >> return ()
+skip = void

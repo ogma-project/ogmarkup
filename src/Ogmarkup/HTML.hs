@@ -30,8 +30,8 @@ htmlConf typo =
           (\aside -> [st|<blockquote>#{aside}</blockquote>|])
           (\paragraph -> [st|<p>#{paragraph}</p>|])
           id
-          (\a -> \dialogue -> [st|<span class="dialogue by-#{a}">#{dialogue}</span>|])
-          (\a -> \thought -> [st|<span class="thought by-#{a}">#{thought}</span>|])
+          (\a dialogue -> [st|<span class="dialogue by-#{a}">#{dialogue}</span>|])
+          (\a thought -> [st|<span class="thought by-#{a}">#{thought}</span>|])
           (\reply -> [st|<span class="reply">#{reply}</span>|])
           "</p><p>"
           (\text -> [st|<emph>#{text}</emph>|])
