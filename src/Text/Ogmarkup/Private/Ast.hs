@@ -1,4 +1,4 @@
-module Ogmarkup.Private.Ast where
+module Text.Ogmarkup.Private.Ast where
 
 type Document a = [Section a]
 
@@ -31,7 +31,7 @@ data Format a =
 
 
 -- | A sequence of 'Atom'.
---  
+--
 --   @'Text' ['Word' "hi", 'Word' "miss", 'Punctuation' 'Exclamation']@
 --
 --   represents the string
@@ -39,7 +39,7 @@ data Format a =
 --   @Hi miss!@
 --
 --   whereas
---  
+--
 --   @'Quote' ['Word' "hi", 'Word' "miss", 'Punctuation' 'Exclamation']@
 --
 --   represents the string
