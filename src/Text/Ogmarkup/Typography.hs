@@ -18,50 +18,56 @@ data Space =
 -- | A Typography is a data type that tells the caller what space
 --   she should privileged before and after a text.
 data Typography a = Typography {
-  decide        :: Ast.Atom a -> (Space, Space, a),
+  decide        :: Ast.Mark -> (Space, Space, a),
   openDialogue  :: Bool -> Maybe Ast.Mark,
   closeDialogue :: Bool -> Maybe Ast.Mark
   }
+
+instance Functor Typography where
+  f `fmap` (Typography d o c) = let d' m = let (s1, s2, x) = d m in (s1, s2, f x)
+                                in Typography d' o c
 
 -- | From a Typography, it gives the space to privilege before the
 --   input Text.
 beforeAtom :: Typography a
            -> Ast.Atom a
            -> Space
-beforeAtom t o = case decide t o of (r, _, _) -> r
+beforeAtom t (Ast.Punctuation m) = case decide t m of (r, _, _) -> r
+beforeAtom t _ = Normal
 
 -- | From a Typography, it gives the space to privilege after the
 --   input Text.
 afterAtom :: Typography a
           -> Ast.Atom a
           -> Space
-afterAtom t o = case decide t o of (_, r, _) -> r
+afterAtom t (Ast.Punctuation m) = case decide t m of (_, r, _) -> r
+afterAtom t _ = Normal
 
 -- | Normalize the input in order to add it to a generated Text.
 normalizeAtom :: Typography a
               -> Ast.Atom a
               -> a
-normalizeAtom t o = case decide t o of (_, _, r) -> r
+normalizeAtom t (Ast.Punctuation m) = case decide t m of (_, _, r) -> r
+normalizeAtom t (Ast.Word w) = w
 
 -- | The French typography. It can be used with several generation
 -- approach, as it stay very generic.
 frenchTypo :: IsString a => Typography a
 frenchTypo = Typography t prevT nextT
   where
-    t :: IsString a => Ast.Atom a -> (Space, Space, a)
-    t (Ast.Word w) = (Normal, Normal, w)
-    t (Ast.Punctuation Ast.Semicolon) = (Nbsp, Normal, ";")
-    t (Ast.Punctuation Ast.Colon) = (Nbsp, Normal, ":")
-    t (Ast.Punctuation Ast.OpenQuote) = (Normal, Nbsp, "«")
-    t (Ast.Punctuation Ast.CloseQuote) = (Nbsp, Normal, "»")
-    t (Ast.Punctuation Ast.Question) = (Nbsp, Normal, "?")
-    t (Ast.Punctuation Ast.Exclamation) = (Nbsp, Normal, "!")
-    t (Ast.Punctuation Ast.LongDash) = (Normal, Normal, "—")
-    t (Ast.Punctuation Ast.Dash) = (None, None, "–")
-    t (Ast.Punctuation Ast.Hyphen) = (None, None, "-")
-    t (Ast.Punctuation Ast.Comma) = (None, Normal, ",")
-    t (Ast.Punctuation Ast.Point) = (None, Normal, ".")
-    t (Ast.Punctuation Ast.SuspensionPoints) = (None, Normal, "…")
+    t :: IsString a => Ast.Mark -> (Space, Space, a)
+    t Ast.Semicolon = (Nbsp, Normal, ";")
+    t Ast.Colon = (Nbsp, Normal, ":")
+    t Ast.OpenQuote = (Normal, Nbsp, "«")
+    t Ast.CloseQuote = (Nbsp, Normal, "»")
+    t Ast.Question = (Nbsp, Normal, "?")
+    t Ast.Exclamation = (Nbsp, Normal, "!")
+    t Ast.LongDash = (Normal, Normal, "—")
+    t Ast.Dash = (None, None, "–")
+    t Ast.Hyphen = (None, None, "-")
+    t Ast.Comma = (None, Normal, ",")
+    t Ast.Point = (None, Normal, ".")
+    t Ast.SuspensionPoints = (None, Normal, "…")
 
     prevT True = Just Ast.LongDash
     prevT False = Just Ast.OpenQuote
@@ -72,17 +78,16 @@ frenchTypo = Typography t prevT nextT
 englishTypo :: IsString a => Typography a
 englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuote)
   where
-    t :: IsString a => Ast.Atom a -> (Space, Space, a)
-    t (Ast.Word w) = (Normal, Normal, w)
-    t (Ast.Punctuation Ast.Semicolon) = (None, Normal, ";")
-    t (Ast.Punctuation Ast.Colon) = (None, Normal, ":")
-    t (Ast.Punctuation Ast.OpenQuote) = (Normal, None, "“")
-    t (Ast.Punctuation Ast.CloseQuote) = (None, Normal, "”")
-    t (Ast.Punctuation Ast.Question) = (None, Normal, "?")
-    t (Ast.Punctuation Ast.Exclamation) = (None, Normal, "!")
-    t (Ast.Punctuation Ast.LongDash) = (Normal, None, "—")
-    t (Ast.Punctuation Ast.Dash) = (None, None, "–")
-    t (Ast.Punctuation Ast.Hyphen) = (None, None, "-")
-    t (Ast.Punctuation Ast.Comma) = (None, Normal, ",")
-    t (Ast.Punctuation Ast.Point) = (None, Normal, ".")
-    t (Ast.Punctuation Ast.SuspensionPoints) = (None, Normal, "…")
+    t :: IsString a => Ast.Mark -> (Space, Space, a)
+    t Ast.Semicolon = (None, Normal, ";")
+    t Ast.Colon = (None, Normal, ":")
+    t Ast.OpenQuote = (Normal, None, "“")
+    t Ast.CloseQuote = (None, Normal, "”")
+    t Ast.Question = (None, Normal, "?")
+    t Ast.Exclamation = (None, Normal, "!")
+    t Ast.LongDash = (Normal, None, "—")
+    t Ast.Dash = (None, None, "–")
+    t Ast.Hyphen = (None, None, "-")
+    t Ast.Comma = (None, Normal, ",")
+    t Ast.Point = (None, Normal, ".")
+    t Ast.SuspensionPoints = (None, Normal, "…")
