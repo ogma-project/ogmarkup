@@ -13,10 +13,9 @@ before_install:
   - chmod a+x ~/.local/bin/stack
 
 install:
-  - stack install cabal-install --install-ghc
+  - stack setup
 
 script:
-  - stack setup
   - stack build
   - stack test
-
+  - stack haddock

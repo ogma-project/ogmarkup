@@ -2,55 +2,52 @@
 
 module Parser where
 
-import Test.Hspec
-import Text.ParserCombinators.Parsec
-import Data.Either
-import Data.Text (Text)
+import           Data.Either
+import           Data.Text                     (Text)
+import           Test.Hspec
+import           Text.ParserCombinators.Parsec
 
-import qualified Ogmarkup.Private.Ast as Ast
-import qualified Ogmarkup.Private.Parser as Parser
+import qualified Text.Ogmarkup.Private.Ast     as Ast
+import qualified Text.Ogmarkup.Private.Parser  as Parser
 
 shouldParse x b = x `shouldBe` Right b
 
 shouldFail x = x `shouldSatisfy` isLeft
 
 parserSpec :: Spec
-parserSpec = do
-  describe "atom" $ do
-    it "should not parse an empty string" $ do
-      shouldFail (parse Parser.atom "" "")
+parserSpec = describe "atom" $ do
+    it "should not parse an empty string" $ shouldFail (parse Parser.atom "" "")
 
-    it "should parse one word" $ do
-      (parse Parser.atom "" hiStr) `shouldParse` hiAtom
+    it "should parse one word" $ parse Parser.atom "" hiStr `shouldParse` hiAtom
 
-    it "should parse one punctuation mark" $ do
-      (parse Parser.atom "" exclamationStr) `shouldParse` exclamationAtom
+    it "should parse one punctuation mark" $
+      parse Parser.atom "" exclamationStr `shouldParse` exclamationAtom
 
-    it "should parse one quote" $ do
-      (parse Parser.collection "" quoteStr) `shouldParse` quoteCollection
+    it "should parse one quote" $
+      parse Parser.collection "" quoteStr `shouldParse` quoteCollection
 
-    it "should fail if the quote is ill-formed (no closing quote)" $ do
+    it "should fail if the quote is ill-formed (no closing quote)" $
       shouldFail (parse Parser.collection "" illQuoteStr)
 
-    it "should parse a raw collection" $ do
-      (parse Parser.format "" rawStr) `shouldParse` rawFormat
+    it "should parse a raw collection" $
+      parse Parser.format "" rawStr `shouldParse` rawFormat
 
-    it "should parse an emphasis collection with no space" $ do
-      (parse Parser.format "" emphStrNoSpace) `shouldParse` emphFormat
+    it "should parse an emphasis collection with no space" $
+      parse Parser.format "" emphStrNoSpace `shouldParse` emphFormat
 
-    it "should parse an emphasis collection with some spaces" $ do
-      (parse Parser.format "" emphStrSpace) `shouldParse` emphFormat
+    it "should parse an emphasis collection with some spaces" $
+      parse Parser.format "" emphStrSpace `shouldParse` emphFormat
 
-    it "should fail if it encounters a blank line" $ do
+    it "should fail if it encounters a blank line" $
       shouldFail (parse Parser.format "" emphStrEndOfParagraph)
 
-    it "should parse a strongly emphasis collection with no space" $ do
-      (parse Parser.format "" strongEmphStrNoSpace) `shouldParse` strongEmphFormat
+    it "should parse a strongly emphasis collection with no space" $
+      parse Parser.format "" strongEmphStrNoSpace `shouldParse` strongEmphFormat
 
-    it "should parse a strongly emphasis collection with some spaces" $ do
-      (parse Parser.format "" strongEmphStrSpace) `shouldParse` strongEmphFormat
+    it "should parse a strongly emphasis collection with some spaces" $
+      parse Parser.format "" strongEmphStrSpace `shouldParse` strongEmphFormat
 
-    it "should fail if it encounters a blank line" $ do
+    it "should fail if it encounters a blank line" $
       shouldFail (parse Parser.format "" strongEmphStrEndOfParagraph)
 
 hiStr = "hi"
