@@ -1,12 +1,20 @@
 module Text.Ogmarkup
     (
-      Ast.Mark (..),
+      -- * Parse and Generate
       ogmarkup,
-      Typo.Space (..),
-      Typo.Typography (..),
+
+      -- * Generation Configuration
+      Conf.GenConf (..),
+      Conf.Template,
+
+      -- * Typography
       Typo.frenchTypo,
       Typo.englishTypo,
-      Conf.GenConf (..)
+      Typo.Typography (..),
+
+      -- * Punctuation marks and space
+      Ast.Mark (..),
+      Typo.Space (..),
     ) where
 
 import           Data.String
@@ -18,6 +26,9 @@ import qualified Text.Ogmarkup.Private.Generator as Gen
 import qualified Text.Ogmarkup.Private.Parser    as Parser
 import qualified Text.Ogmarkup.Private.Typography as Typo
 
+-- | From a String, parse and generate an output according to a generation configuration.
+--   The inner definitions of the parser and the generator implies the output
+--   type has to be an instance of the 'IsString' and 'Monoid' classes.
 ogmarkup :: (IsString a, Monoid a) => String
          -> Conf.GenConf a
          -> Either ParseError a
