@@ -23,9 +23,8 @@ library
         Text.Ogmarkup.Private.Parser
         Text.Ogmarkup.Private.Ast
         Text.Ogmarkup.Private.Generator
-        Text.Ogmarkup.Typography
-        Text.Ogmarkup.Config
-        Text.Ogmarkup.HTML
+        Text.Ogmarkup.Private.Typography
+        Text.Ogmarkup.Private.Config
     build-depends:
         base >=4.7 && <5,
         parsec ==3.1.9,

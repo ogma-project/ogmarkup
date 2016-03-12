@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Ogmarkup.Typography where
+module Text.Ogmarkup.Private.Typography where
 
 import           Data.String
 import qualified Text.Ogmarkup.Private.Ast as Ast

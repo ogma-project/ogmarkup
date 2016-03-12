@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Text.Ogmarkup.Private.Generator where
 
@@ -7,9 +7,9 @@ import           Control.Monad.Reader
 import           Control.Monad.State.Strict
 import           Data.Monoid
 
-import           Text.Ogmarkup.Config
-import qualified Text.Ogmarkup.Private.Ast       as Ast
-import           Text.Ogmarkup.Typography
+import qualified Text.Ogmarkup.Private.Ast        as Ast
+import           Text.Ogmarkup.Private.Config
+import           Text.Ogmarkup.Private.Typography
 
 newtype Generator a x = Generator { getState :: StateT (a, Maybe (Ast.Atom a)) (Reader (GenConf a)) x }
   deriving (Functor, Applicative, Monad, MonadState (a, Maybe (Ast.Atom a)), MonadReader (GenConf a))
