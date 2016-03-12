@@ -11,21 +11,37 @@ import qualified Text.Ogmarkup.Private.Ast        as Ast
 import           Text.Ogmarkup.Private.Config     as Conf
 import           Text.Ogmarkup.Private.Typography
 
+-- * The 'Generator' Monad
+
+-- | The 'Generator' Monad is eventually used to generate an output from a
+--   given 'Ast.Document. Internally, it keeps track of the previous processed
+--   'Ast.Atom' in order to deal with atom separation.
 newtype Generator a x = Generator { getState :: StateT (a, Maybe (Ast.Atom a)) (Reader (GenConf a)) x }
   deriving (Functor, Applicative, Monad, MonadState (a, Maybe (Ast.Atom a)), MonadReader (GenConf a))
 
+-- | Run a 'Generator' monad and get the generated output. The output
+--   type has to implement the class 'Monoid' because the 'Generator' monad
+--   uses the 'mempty' constant as the initial state of the output and then
+--   uses 'mappend' to expand the result as it process the generation.
 runGenerator :: Monoid a
-             => Generator a x
-             -> GenConf a
-             -> a
+             => Generator a x -- ^ The 'Generator' to run
+             -> GenConf a     -- ^ The configuration to use during the generation
+             -> a             -- ^ The output
 runGenerator gen conf = fst $ runReader (execStateT (getState gen) (mempty, Nothing)) conf
 
-askConf :: (GenConf a -> b) -> Generator a b
+-- * Low-level 'Generator's
+
+-- | Retreive a configuration parameter. Let the output untouched.
+askConf :: (GenConf a -> b) -- ^ The function to apply to the 'GenConf' variable
+                            --   To retreive the wanted parameter.
+        -> Generator a b
 askConf f = f <$> ask
 
+-- | Apply a template to the result of a given 'Generator' before appending it
+--   to the previously generated output.
 apply :: Monoid a
-      => (a -> a)
-      -> Generator a x
+      => Template a      -- ^ The 'Template' to apply.
+      -> Generator a x   -- ^ The 'Generator' to run.
       -> Generator a ()
 apply app gen = do
   (str, maybe) <- get
@@ -34,18 +50,26 @@ apply app gen = do
   (str', maybe') <- get
   put (str `mappend` app str', maybe')
 
+-- | Forget about the past and consider the next 'Ast.Atom' is the
+--   first to be processed.
 reset :: Generator a ()
 reset = do
   (str, _) <- get
   put (str, Nothing)
 
+-- | Append a new sub-output to the generated output
 raw :: Monoid a
-    => a
+    => a                -- ^ A sub-output to append
     -> Generator a ()
 raw str' = do
   (str, maybePrev) <- get
   put (str `mappend` str', maybePrev)
 
+-- * AST Processing 'Generator's
+
+-- | Process an 'Ast.Atom' and deal with the space to use to separate it from
+--   the paramter of the previous call (that is the previous processed
+--   'Ast.Atom').
 atom :: Monoid a
      => Ast.Atom a
      -> Generator a ()
@@ -63,12 +87,14 @@ atom text = do
         put (str `mappend` str', Just text)
     Nothing -> put (str `mappend` normalizeAtom typo text, Just text)
 
+-- | Call 'atom' if the parameter is not 'Nothing'. Otherwise, do nothing.
 maybeAtom :: Monoid a
           => Maybe (Ast.Atom a)
           -> Generator a ()
 maybeAtom (Just text) = atom text
 maybeAtom Nothing = return ()
 
+-- | Process a sequence of 'Ast.Atom'.
 atoms :: Monoid a
       => [Ast.Atom a]
       -> Generator a ()
@@ -77,6 +103,8 @@ atoms (f:rst) = do
   atoms rst
 atoms [] = return ()
 
+-- | Process a 'Ast.Collection'. In particular, it deal with the quotes when
+--   required.
 collection :: Monoid a
            => Ast.Collection a
            -> Generator a ()
@@ -86,6 +114,7 @@ collection (Ast.Quote as) = do atom (Ast.Punctuation Ast.OpenQuote)
 
 collection (Ast.Text as) = atoms as
 
+-- | Process a sequence of 'Ast.Collection'.
 collections :: Monoid a
             => [Ast.Collection a]
             -> Generator a ()
@@ -93,6 +122,7 @@ collections (f:rst) = do collection f
                          collections rst
 collections [] = return ()
 
+-- | Process a 'Ast.Format'.
 format :: Monoid a
        => Ast.Format a
        -> Generator a ()
@@ -106,6 +136,7 @@ format (Ast.StrongEmph cs) = do
 
   apply temp (collections cs)
 
+-- | Process a sequence of 'Ast.Format'.
 formats :: Monoid a
            => [Ast.Format a]
            -> Generator a ()
@@ -114,6 +145,7 @@ formats (f:rst) = do
   formats rst
 formats [] = return ()
 
+-- | Process a 'Ast.Reply'.
 reply :: Monoid a
       => Maybe (Ast.Atom a)
       -> Maybe (Ast.Atom a)
@@ -139,6 +171,7 @@ reply begin end (Ast.WithSay d ws d') = do
                apply temp (formats d')
                maybeAtom end
 
+-- | Process a 'Ast.Component'.
 component :: Monoid a
           => Bool           -- ^ Was the last component an audible dialog?
           -> Bool           -- ^ Will the next component be an audible dialog?
@@ -162,8 +195,9 @@ component p n (Ast.Thought d a) = do
   apply (temp $ auth a) (reply Nothing Nothing d)
 component p n (Ast.Teller fs) = formats fs
 
+-- | Process a 'Ast.Paragraph' and deal with sequence of 'Ast.Reply'.
 paragraph :: Monoid a
-          => [Ast.Component a]
+          => Ast.Paragraph a
           -> Generator a ()
 paragraph l@(h:r) = do
   temp <- askConf paragraphTemplate
@@ -192,6 +226,7 @@ paragraph l@(h:r) = do
       recGen between (isDialogue c) (willBeDialogue rst) rst
     recGen _ _ _ [] = return ()
 
+-- | Process a sequence of 'Ast.Paragraph'.
 paragraphs :: Monoid a
            => [Ast.Paragraph a]
            -> Generator a ()
@@ -200,6 +235,7 @@ paragraphs (h:r) = do paragraph h
                       paragraphs r
 paragraphs [] = return ()
 
+-- | Process a 'Ast.Section'.
 section :: Monoid a
         => Ast.Section a
         -> Generator a ()
@@ -210,6 +246,7 @@ section (Ast.Aside ps) = do temp <- askConf asideTemplate
 
                             apply temp (paragraphs ps)
 
+-- | Process a sequence of 'Ast.Section'.
 sections :: Monoid a
          => [Ast.Section a]
          -> Generator a ()
@@ -217,6 +254,7 @@ sections (s:r) = do section s
                     sections r
 sections [] = return ()
 
+-- | Process a 'Ast.Document', that is a complete Ogmarkup document
 document :: Monoid a
           => Ast.Document a
          -> Generator a ()
