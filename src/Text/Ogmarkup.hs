@@ -5,17 +5,18 @@ module Text.Ogmarkup
       Typo.Space (..),
       Typo.Typography (..),
       Typo.frenchTypo,
-      Typo.englishTypo
+      Typo.englishTypo,
+      Conf.GenConf (..)
     ) where
 
 import           Data.String
 import           Text.ParserCombinators.Parsec
 
-import qualified Text.Ogmarkup.Config            as Conf
+import qualified Text.Ogmarkup.Private.Config            as Conf
 import qualified Text.Ogmarkup.Private.Ast       as Ast
 import qualified Text.Ogmarkup.Private.Generator as Gen
 import qualified Text.Ogmarkup.Private.Parser    as Parser
-import qualified Text.Ogmarkup.Typography as Typo
+import qualified Text.Ogmarkup.Private.Typography as Typo
 
 ogmarkup :: (IsString a, Monoid a) => String
          -> Conf.GenConf a
