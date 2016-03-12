@@ -8,7 +8,7 @@ import           Control.Monad.State.Strict
 import           Data.Monoid
 
 import qualified Text.Ogmarkup.Private.Ast        as Ast
-import           Text.Ogmarkup.Private.Config
+import           Text.Ogmarkup.Private.Config     as Conf
 import           Text.Ogmarkup.Private.Typography
 
 newtype Generator a x = Generator { getState :: StateT (a, Maybe (Ast.Atom a)) (Reader (GenConf a)) x }
@@ -19,6 +19,9 @@ runGenerator :: Monoid a
              -> GenConf a
              -> a
 runGenerator gen conf = fst $ runReader (execStateT (getState gen) (mempty, Nothing)) conf
+
+askConf :: (GenConf a -> b) -> Generator a b
+askConf f = f <$> ask
 
 apply :: Monoid a
       => (a -> a)
@@ -48,8 +51,8 @@ atom :: Monoid a
      -> Generator a ()
 atom text = do
   (str, maybePrev) <- get
-  typo <- typography <$> ask
-  ptrSpace <- printSpace <$> ask
+  typo <- askConf typography
+  ptrSpace <- askConf printSpace
 
   case maybePrev of
     Just prev ->
@@ -95,11 +98,11 @@ format :: Monoid a
        -> Generator a ()
 format (Ast.Raw cs) = collections cs
 format (Ast.Emph cs) = do
-  temp <- emphTemplate <$> ask
+  temp <- askConf emphTemplate
 
   apply temp (collections cs)
 format (Ast.StrongEmph cs) = do
-  temp <- strongEmphTemplate <$> ask
+  temp <- askConf strongEmphTemplate
 
   apply temp (collections cs)
 
@@ -117,13 +120,13 @@ reply :: Monoid a
       -> Ast.Reply a
       -> Generator a ()
 reply begin end (Ast.Simple d) = do
-  temp <- replyTemplate <$> ask
+  temp <- askConf replyTemplate
 
   maybeAtom begin
   apply temp (formats d)
   maybeAtom end
 reply begin end (Ast.WithSay d ws d') = do
-  temp <- replyTemplate <$> ask
+  temp <- askConf replyTemplate
 
   maybeAtom begin
   apply temp (formats d)
@@ -142,32 +145,29 @@ component :: Monoid a
           -> Ast.Component a  -- ^ The current to process.
           -> Generator a ()
 component p n (Ast.Dialogue d a) = do
-  conf <- ask
+  typo <- askConf typography
+  auth <- askConf authorNormalize
+  temp <- askConf dialogueTemplate
 
   let
-    open = openDialogue . typography $ conf
-    close = closeDialogue . typography $ conf
-    auth = authorNormalize conf
-    temp = dialogueTemplate conf $ auth a
+    open = openDialogue typo
+    close = closeDialogue typo
 
-  apply temp (reply (Ast.Punctuation <$> open p) (Ast.Punctuation <$> close p) d)
+  apply (temp $ auth a) (reply (Ast.Punctuation <$> open p) (Ast.Punctuation <$> close p) d)
 
 component p n (Ast.Thought d a) = do
-  conf <- ask
+  auth <- askConf authorNormalize
+  temp <- askConf dialogueTemplate
 
-  let
-    auth = authorNormalize conf
-    temp = dialogueTemplate conf (auth a)
-
-  apply temp (reply Nothing Nothing d)
+  apply (temp $ auth a) (reply Nothing Nothing d)
 component p n (Ast.Teller fs) = formats fs
 
 paragraph :: Monoid a
           => [Ast.Component a]
           -> Generator a ()
 paragraph l@(h:r) = do
-  temp <- paragraphTemplate <$> ask
-  between <- betweenDialogue <$> ask
+  temp <- askConf paragraphTemplate
+  between <- askConf betweenDialogue
 
   apply temp (recGen between False (willBeDialogue l) (h:r))
 
@@ -203,10 +203,10 @@ paragraphs [] = return ()
 section :: Monoid a
         => Ast.Section a
         -> Generator a ()
-section (Ast.Story ps) = do temp <- storyTemplate <$> ask
+section (Ast.Story ps) = do temp <- askConf storyTemplate
 
                             apply temp (paragraphs ps)
-section (Ast.Aside ps) = do temp <- asideTemplate <$> ask
+section (Ast.Aside ps) = do temp <- askConf asideTemplate
 
                             apply temp (paragraphs ps)
 
@@ -220,6 +220,6 @@ sections [] = return ()
 document :: Monoid a
           => Ast.Document a
          -> Generator a ()
-document d = do temp <- documentTemplate <$> ask
+document d = do temp <- askConf documentTemplate
 
                 apply temp (sections d)
