@@ -21,5 +21,5 @@ ogmarkup :: (IsString a, Monoid a) => String
          -> Conf.GenConf a
          -> Either ParseError a
 ogmarkup input conf = let res = parse Parser.document "" input
-                      in case res of Right ast -> Right $ Gen.generate conf ast
+                      in case res of Right ast -> Right $ Gen.runGenerator (Gen.document ast) conf
                                      Left err -> Left err
