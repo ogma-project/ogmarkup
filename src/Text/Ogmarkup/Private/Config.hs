@@ -3,7 +3,6 @@
 module Text.Ogmarkup.Private.Config where
 
 import           Data.Monoid
-import           Data.Text                        (Text)
 import           Text.Ogmarkup.Private.Typography
 
 type Template a = a -> a
