@@ -5,6 +5,8 @@ module Text.Ogmarkup.Private.Typography where
 import           Data.String
 import qualified Text.Ogmarkup.Private.Ast as Ast
 
+-- * Inner spaces representation
+
 -- | Deal with typographic spaces, especially when it comes to
 --   separate two texts. Because Space derives Ord, it is possible
 --   to use min and max to determine which one to use in case of
@@ -14,6 +16,8 @@ data Space =
   | Nbsp -- ^ A non breakable space, it cannot be turned into a newline.
   | None -- ^ No space at all.
     deriving (Eq,Ord)
+
+-- * Typography definition
 
 -- | A Typography is a data type that tells the caller what space
 --   she should privileged before and after a text.
@@ -50,8 +54,11 @@ normalizeAtom :: Typography a
 normalizeAtom t (Ast.Punctuation m) = case decide t m of (_, _, r) -> r
 normalizeAtom t (Ast.Word w) = w
 
--- | The French typography. It can be used with several generation
--- approach, as it stay very generic.
+-- * Ready-to-use Typography
+
+-- | A proposal for tho French typography. It can be used with several generation
+--   approach, as it stay very generic. Required the output type to be an
+--   instance of 'IsString'.
 frenchTypo :: IsString a => Typography a
 frenchTypo = Typography t prevT nextT
   where
@@ -75,6 +82,9 @@ frenchTypo = Typography t prevT nextT
     nextT True = Nothing
     nextT False = Just Ast.CloseQuote
 
+-- | A proposal for tho English typography. It can be used with several generation
+--   approach, as it stay very generic. Required the output type to be an
+--   instance of 'IsString'.
 englishTypo :: IsString a => Typography a
 englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuote)
   where
