@@ -45,5 +45,5 @@ generateHTML :: Typography Text
              -> String
              -> Either ParseError Text
 generateHTML typo input = let res = parse Parser.document "" input
-                          in case res of Right ast -> Right $ Generator.generate (htmlConf typo) ast
+                          in case res of Right ast -> Right $ Generator.runGenerator (Generator.document ast) (htmlConf typo)
                                          Left err -> Left err
