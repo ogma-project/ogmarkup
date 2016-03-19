@@ -186,7 +186,7 @@ component p n (Ast.Dialogue d a) = do
     open = openDialogue typo
     close = closeDialogue typo
 
-  apply (temp $ auth a) (reply (Ast.Punctuation <$> open p) (Ast.Punctuation <$> close p) d)
+  apply (temp $ auth a) (reply (Ast.Punctuation <$> open p) (Ast.Punctuation <$> close n) d)
 
 component p n (Ast.Thought d a) = do
   auth <- askConf authorNormalize
@@ -203,7 +203,7 @@ paragraph l@(h:r) = do
   temp <- askConf paragraphTemplate
   between <- askConf betweenDialogue
 
-  apply temp (recGen between False (willBeDialogue l) (h:r))
+  apply temp (recGen between False (willBeDialogue l) l)
 
   where
     isDialogue (Ast.Dialogue _ _) = True
