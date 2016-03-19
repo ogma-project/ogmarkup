@@ -32,6 +32,8 @@ import qualified Text.Ogmarkup.Private.Typography as Typo
 ogmarkup :: (IsString a, Monoid a) => String
          -> Conf.GenConf a
          -> Either ParseError a
-ogmarkup input conf = let res = parse Parser.document "" input
+ogmarkup input conf = let res = Parser.parse Parser.document
+                                             ""
+                                             input
                       in case res of Right ast -> Right $ Gen.runGenerator (Gen.document ast) conf
                                      Left err -> Left err

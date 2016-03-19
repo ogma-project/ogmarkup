@@ -16,39 +16,39 @@ shouldFail x = x `shouldSatisfy` isLeft
 
 parserSpec :: Spec
 parserSpec = describe "atom" $ do
-    it "should not parse an empty string" $ shouldFail (parse Parser.atom "" "")
+    it "should not parse an empty string" $ shouldFail (Parser.parse Parser.atom "" "")
 
-    it "should parse one word" $ parse Parser.atom "" hiStr `shouldParse` hiAtom
+    it "should parse one word" $ Parser.parse Parser.atom "" hiStr `shouldParse` hiAtom
 
     it "should parse one punctuation mark" $
-      parse Parser.atom "" exclamationStr `shouldParse` exclamationAtom
+      Parser.parse Parser.atom "" exclamationStr `shouldParse` exclamationAtom
 
     it "should parse one quote" $
-      parse Parser.collection "" quoteStr `shouldParse` quoteCollection
+      Parser.parse Parser.collection "" quoteStr `shouldParse` quoteCollection
 
     it "should fail if the quote is ill-formed (no closing quote)" $
-      shouldFail (parse Parser.collection "" illQuoteStr)
+      shouldFail (Parser.parse Parser.collection "" illQuoteStr)
 
     it "should parse a raw collection" $
-      parse Parser.format "" rawStr `shouldParse` rawFormat
+      Parser.parse Parser.format "" rawStr `shouldParse` rawFormat
 
     it "should parse an emphasis collection with no space" $
-      parse Parser.format "" emphStrNoSpace `shouldParse` emphFormat
+      Parser.parse Parser.format "" emphStrNoSpace `shouldParse` emphFormat
 
     it "should parse an emphasis collection with some spaces" $
-      parse Parser.format "" emphStrSpace `shouldParse` emphFormat
+      Parser.parse Parser.format "" emphStrSpace `shouldParse` emphFormat
 
     it "should fail if it encounters a blank line" $
-      shouldFail (parse Parser.format "" emphStrEndOfParagraph)
+      shouldFail (Parser.parse Parser.format "" emphStrEndOfParagraph)
 
     it "should parse a strongly emphasis collection with no space" $
-      parse Parser.format "" strongEmphStrNoSpace `shouldParse` strongEmphFormat
+      Parser.parse Parser.format "" strongEmphStrNoSpace `shouldParse` strongEmphFormat
 
     it "should parse a strongly emphasis collection with some spaces" $
-      parse Parser.format "" strongEmphStrSpace `shouldParse` strongEmphFormat
+      Parser.parse Parser.format "" strongEmphStrSpace `shouldParse` strongEmphFormat
 
     it "should fail if it encounters a blank line" $
-      shouldFail (parse Parser.format "" strongEmphStrEndOfParagraph)
+      shouldFail (Parser.parse Parser.format "" strongEmphStrEndOfParagraph)
 
 hiStr = "hi"
 hiAtom = Ast.Word "hi"
