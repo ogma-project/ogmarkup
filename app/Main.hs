@@ -10,6 +10,7 @@ import           Text.ParserCombinators.Parsec
 import           Text.Shakespeare.Text
 import Text.Hamlet
 import Text.Blaze.Html.Renderer.String (renderHtml)
+import Text.Blaze.Html (preEscapedToHtml)
 
 main :: IO ()
 main = do
@@ -65,7 +66,7 @@ htmlConf typo =
           (\reply -> [shamlet|$newline never
                               <span .reply>
                                 #{reply}|])
-          "</p><p>"
+          (preEscapedToHtml ("</p><p>" :: Text))
           (\text -> [shamlet|<emph>#{text}|])
           (\text -> [shamlet|<strong>#{text}|])
           id
