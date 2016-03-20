@@ -67,7 +67,9 @@ htmlConf typo =
                               <span .reply>
                                 #{reply}|])
           (preEscapedToHtml ("</p><p>" :: Text))
-          (\text -> [shamlet|<emph>#{text}|])
-          (\text -> [shamlet|<strong>#{text}|])
+          (\text -> [shamlet|$newline never
+                             <em>#{text}|])
+          (\text -> [shamlet|$newline never
+                             <strong>#{text}|])
           id
           htmlPrintSpace

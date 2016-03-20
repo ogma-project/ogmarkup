@@ -103,38 +103,27 @@ atoms (f:rst) = do
   atoms rst
 atoms [] = return ()
 
--- | Process a 'Ast.Collection'. In particular, it deal with the quotes when
---   required.
-collection :: Monoid a
-           => Ast.Collection a
-           -> Generator a ()
-collection (Ast.Quote as) = do atom (Ast.Punctuation Ast.OpenQuote)
-                               atoms as
-                               atom (Ast.Punctuation Ast.CloseQuote)
-
-collection (Ast.Text as) = atoms as
-
--- | Process a sequence of 'Ast.Collection'.
-collections :: Monoid a
-            => [Ast.Collection a]
-            -> Generator a ()
-collections (f:rst) = do collection f
-                         collections rst
-collections [] = return ()
-
 -- | Process a 'Ast.Format'.
 format :: Monoid a
        => Ast.Format a
        -> Generator a ()
-format (Ast.Raw cs) = collections cs
-format (Ast.Emph cs) = do
+
+format (Ast.Raw as) = atoms as
+
+format (Ast.Emph fs) = do
   temp <- askConf emphTemplate
 
-  apply temp (collections cs)
-format (Ast.StrongEmph cs) = do
+  apply temp (formats fs)
+
+format (Ast.StrongEmph fs) = do
   temp <- askConf strongEmphTemplate
 
-  apply temp (collections cs)
+  apply temp (formats fs)
+
+format (Ast.Quote fs) = do
+  atom $ Ast.Punctuation Ast.OpenQuote
+  formats fs
+  atom $ Ast.Punctuation Ast.CloseQuote
 
 -- | Process a sequence of 'Ast.Format'.
 formats :: Monoid a

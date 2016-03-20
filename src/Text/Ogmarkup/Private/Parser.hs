@@ -134,53 +134,42 @@ reply c c' = do char c
 -- | See 'Ast.Format'.
 format :: IsString a
        => OgmarkupParser (Ast.Format a)
-format = try strongEmph <|> emph <|> raw
+format = choice [ raw
+                , emph
+                , strongEmph
+                , quote
+                ]
 
 -- | See 'Ast.Raw'.
 raw :: IsString a
     => OgmarkupParser (Ast.Format a)
-raw = Ast.Raw `fmap` many1 collection
+raw = Ast.Raw `fmap` many1 atom 
 
 -- | See 'Ast.Emph'.
 emph :: IsString a
      => OgmarkupParser (Ast.Format a)
 emph = do char '*'
           blank
-          col <- many1 collection
-          char '*' <?> "Missing * to close emphasis"
-          blank
-
-          return $ Ast.Emph col
+          f <- format
+          fs <- manyTill format (char '*' >> blank)
+          return . Ast.Emph $ (f:fs)
 
 -- | See 'Ast.StrongEmph'.
 strongEmph :: IsString a
            => OgmarkupParser (Ast.Format a)
 strongEmph = do char '+'
                 blank
-                col <- many1 collection
-                char '+' <?> "Missing * to close emphasis"
-                blank
+                f <- format
+                fs <- manyTill format (char '+' >> blank)
+                return . Ast.StrongEmph $ (f:fs)
 
-                return $ Ast.StrongEmph col
-
--- | See 'Ast.Collection'.
-collection :: IsString a
-           => OgmarkupParser (Ast.Collection a)
-collection = quote <|> text
-
--- | See 'Ast.Quote'.
 quote :: IsString a
-      => OgmarkupParser (Ast.Collection a)
-quote = do openQuote
-           atoms <- many1 atom
-           closeQuote <?> "A previously opened quote needs to be cloded"
-
-           return $ Ast.Quote atoms
-
--- | See 'Ast.Text'.
-text :: IsString a
-     => OgmarkupParser (Ast.Collection a)
-text = Ast.Text `fmap` many1 atom
+      => OgmarkupParser (Ast.Format a)
+quote = do char '"'
+           blank
+           f <- format
+           fs <- manyTill format (char '"' >> blank)
+           return . Ast.Quote $ (f:fs)
 
 -- | See 'Ast.Atom'.
 atom :: IsString a
