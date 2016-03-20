@@ -27,32 +27,12 @@ data Reply a =
   | WithSay [Format a] [Format a] [Format a]
     deriving (Eq,Show)
 
--- | A formatted sequence of 'Collection's.
+-- | A nested formatted text
 data Format a =
-  Raw [Collection a]          -- ^ No particular emphasis is required on this sequence
-  | Emph [Collection a]       -- ^ Surrounded by @*@.
-  | StrongEmph [Collection a] -- ^ Surrounded by @**@.
-    deriving (Show,Eq)
-
-
--- | A sequence of 'Atom'.
---
---   @'Text' ['Word' "hi", 'Word' "miss", 'Punctuation' 'Exclamation']@
---
---   represents the string
---
---   @Hi miss!@
---
---   whereas
---
---   @'Quote' ['Word' "hi", 'Word' "miss", 'Punctuation' 'Exclamation']@
---
---   represents the string
---
---   @"Hi miss!"@
-data Collection a =
-    Text [Atom a] -- ^ A regular text composed of several 'Atom'.
-  | Quote [Atom a] -- ^ A sequence of 'Atom' surrounded by 'OpenQuote' and 'CloseQuote'.
+  Raw [Atom a]                -- ^ No particular emphasis is required on this sequence
+  | Emph [Format a]           -- ^ Surrounded by @*@.
+  | StrongEmph [Format a]     -- ^ Surrounded by @**@.
+  | Quote [Format a]
     deriving (Show,Eq)
 
 -- | An Atom is the atomic component of a Ogmarkup document. It can be either a
