@@ -48,17 +48,27 @@ htmlPrintSpace None = ""
 htmlPrintSpace Normal = " "
 htmlPrintSpace Nbsp = [shamlet|&nbsp;|]
 
+auth :: Maybe Html -> Html
+auth Nothing = "by-anonymus"
+auth (Just auth) = [shamlet|by-#{auth}|]
+
+asideTemp :: Maybe Html -> Template Html
+asideTemp (Just cls) a = [shamlet|<blockquote .#{cls}>
+                                    #{a}|]
+asideTemp _ a = [shamlet|<blockquote>
+                           #{a}|]
+
 htmlConf :: Typography Html
          -> GenConf Html
 htmlConf typo =
   GenConf typo
           (\doc -> [shamlet|<article>#{doc}|])
           id
-          (\aside -> [shamlet|<blockquote>#{aside}|])
+          asideTemp
           (\paragraph -> [shamlet|<p>#{paragraph}|])
           id
           (\a dialogue -> [shamlet|$newline never
-                                   <span .dialogue .by-#{a}>
+                                   <span .dialogue .#{a}>
                                      #{dialogue}|])
           (\a thought -> [shamlet|$newline never
                                   <span .thought .by-#{a}>
@@ -67,7 +77,9 @@ htmlConf typo =
                               <span .reply>
                                 #{reply}|])
           (preEscapedToHtml ("</p><p>" :: Text))
-          (\text -> [shamlet|<emph>#{text}|])
-          (\text -> [shamlet|<strong>#{text}|])
-          id
+          (\text -> [shamlet|$newline never
+                             <em>#{text}|])
+          (\text -> [shamlet|$newline never
+                             <strong>#{text}|])
+          auth
           htmlPrintSpace
