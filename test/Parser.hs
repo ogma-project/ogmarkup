@@ -32,6 +32,10 @@ parserSpec = describe "atom" $ do
     it "should parse nested formats" $
       Parser.parse Parser.format "" nestedFormatsStr `shouldParse` nestedFormatsFormat
 
+    it "should fail with nested same format" $ do
+      shouldFail (Parser.parse Parser.format "" nestedEmphStr)
+      shouldFail (Parser.parse Parser.format "" nestedStrongEmphStr)
+
 hiStr = "hi"
 hiAtom = Ast.Word "hi"
 
@@ -50,3 +54,6 @@ nestedFormatsFormat = Ast.Emph [ Ast.Raw [ Ast.Word "hi"
                                , Ast.Quote [ Ast.Raw [ Ast.Word "everyone" ] ]
                                , Ast.Raw [ Ast.Punctuation Ast.Point ]
                                ]
+
+nestedEmphStr = "*hi \"*miss*\"*"
+nestedStrongEmphStr = "+hi \"+miss+\"+"

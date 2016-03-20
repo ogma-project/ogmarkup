@@ -23,6 +23,48 @@ data ParserState = ParserState { -- | Already parsing text with emphasis
                                , parseWithinQuote     :: Bool
                                }
 
+enterEmph :: OgmarkupParser ()
+enterEmph = do st <- getState
+               if parseWithEmph st
+                 then fail "guard against nested emphasis"
+                 else do setState st { parseWithEmph = True }
+                         return ()
+
+leaveEmph :: OgmarkupParser ()
+leaveEmph = do st <- getState
+               if parseWithEmph st
+                 then do setState st { parseWithEmph = False }
+                         return ()
+                 else fail "cannot leave emphasis when you did not enter"
+
+enterStrongEmph :: OgmarkupParser ()
+enterStrongEmph = do st <- getState
+                     if parseWithStrongEmph st
+                       then fail "guard against nested strong emphasis"
+                       else do setState st { parseWithStrongEmph = True }
+                               return ()
+
+leaveStrongEmph :: OgmarkupParser ()
+leaveStrongEmph = do st <- getState
+                     if parseWithStrongEmph st
+                       then do setState st { parseWithStrongEmph = False }
+                               return ()
+                       else fail "cannot leave strong emphasis when you did not enter"
+
+enterQuote :: OgmarkupParser ()
+enterQuote = do st <- getState
+                if parseWithinQuote st
+                  then fail "guard against nested quotes"
+                  else do setState st { parseWithinQuote = True }
+                          return ()
+
+leaveQuote :: OgmarkupParser ()
+leaveQuote = do st <- getState
+                if parseWithinQuote st
+                  then do setState st { parseWithinQuote = False }
+                          return ()
+                  else fail "cannot leave quote when you did not enter"
+
 initParserState :: ParserState
 initParserState = ParserState False False False
 
@@ -150,8 +192,10 @@ emph :: IsString a
      => OgmarkupParser (Ast.Format a)
 emph = do char '*'
           blank
+          enterEmph
           f <- format
           fs <- manyTill format (char '*' >> blank)
+          leaveEmph
           return . Ast.Emph $ (f:fs)
 
 -- | See 'Ast.StrongEmph'.
@@ -159,16 +203,20 @@ strongEmph :: IsString a
            => OgmarkupParser (Ast.Format a)
 strongEmph = do char '+'
                 blank
+                enterStrongEmph
                 f <- format
                 fs <- manyTill format (char '+' >> blank)
+                leaveStrongEmph
                 return . Ast.StrongEmph $ (f:fs)
 
 quote :: IsString a
       => OgmarkupParser (Ast.Format a)
 quote = do char '"'
            blank
+           enterQuote
            f <- format
            fs <- manyTill format (char '"' >> blank)
+           leaveQuote
            return . Ast.Quote $ (f:fs)
 
 -- | See 'Ast.Atom'.
