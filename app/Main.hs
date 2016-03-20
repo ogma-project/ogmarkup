@@ -48,6 +48,10 @@ htmlPrintSpace None = ""
 htmlPrintSpace Normal = " "
 htmlPrintSpace Nbsp = [shamlet|&nbsp;|]
 
+auth :: Maybe Html -> Html
+auth Nothing = "by-anonymus"
+auth (Just auth) = [shamlet|by-#{auth}|]
+
 htmlConf :: Typography Html
          -> GenConf Html
 htmlConf typo =
@@ -58,7 +62,7 @@ htmlConf typo =
           (\paragraph -> [shamlet|<p>#{paragraph}|])
           id
           (\a dialogue -> [shamlet|$newline never
-                                   <span .dialogue .by-#{a}>
+                                   <span .dialogue .#{a}>
                                      #{dialogue}|])
           (\a thought -> [shamlet|$newline never
                                   <span .thought .by-#{a}>
@@ -71,5 +75,5 @@ htmlConf typo =
                              <em>#{text}|])
           (\text -> [shamlet|$newline never
                              <strong>#{text}|])
-          id
+          auth
           htmlPrintSpace

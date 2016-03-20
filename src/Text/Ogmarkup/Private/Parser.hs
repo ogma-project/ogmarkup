@@ -144,16 +144,23 @@ thought = talk '<' '>' Ast.Thought
 talk :: IsString a
      => Char -- ^ A character to mark the begining of a reply
      -> Char -- ^ A character to mark the end of a reply
-     -> (Ast.Reply a -> a -> Ast.Component a) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation.
+     -> (Ast.Reply a -> Maybe a -> Ast.Component a) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation.
      -> OgmarkupParser (Ast.Component a)
 talk c c' constructor = do
   rep <- reply c c'
-  char '(' <?> "Missing character name"
-  notFollowedBy (char ')') <?> "Empty character names are not allowed"
-  author <- manyTill anyToken (char ')') <?> "Missing closing )"
+  auth <- optionMaybe authorName
   blank
 
-  return $ constructor rep (fromString author)
+  return $ constructor rep auth
+
+authorName :: IsString a
+           => OgmarkupParser a
+authorName = do
+  char '('
+  notFollowedBy (char ')') <?> "Empty character names are not allowed"
+  auth <- manyTill anyToken (char ')') <?> "Missing closing )"
+
+  return $ fromString auth
 
 -- | 'reply' parses a 'Ast.Reply'.
 reply :: IsString a

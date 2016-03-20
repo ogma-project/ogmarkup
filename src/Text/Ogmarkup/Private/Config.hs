@@ -23,5 +23,5 @@ data GenConf a = GenConf { -- | The Typography to use for the generation
                          betweenDialogue    :: a,
                          emphTemplate       :: Template a,
                          strongEmphTemplate :: Template a,
-                         authorNormalize    :: a -> a,
+                         authorNormalize    :: Maybe a -> a,
                          printSpace         :: Space -> a }
