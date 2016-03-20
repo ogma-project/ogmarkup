@@ -14,7 +14,7 @@ data GenConf a = GenConf { -- | The Typography to use for the generation
                          typography         :: Typography a,
                          documentTemplate   :: Template a,
                          storyTemplate      :: Template a,
-                         asideTemplate      :: Template a,
+                         asideTemplate      :: Maybe a -> Template a,
                          paragraphTemplate  :: Template a,
                          tellerTemplate     :: Template a,
                          dialogueTemplate   :: a -> Template a,

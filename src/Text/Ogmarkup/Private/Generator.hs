@@ -231,9 +231,8 @@ section :: Monoid a
 section (Ast.Story ps) = do temp <- askConf storyTemplate
 
                             apply temp (paragraphs ps)
-section (Ast.Aside ps) = do temp <- askConf asideTemplate
-
-                            apply temp (paragraphs ps)
+section (Ast.Aside cls ps) = do temp <- askConf asideTemplate
+                                apply (temp cls) (paragraphs ps)
 
 -- | Process a sequence of 'Ast.Section'.
 sections :: Monoid a
