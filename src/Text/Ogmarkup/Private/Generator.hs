@@ -179,7 +179,7 @@ component p n (Ast.Dialogue d a) = do
 
 component p n (Ast.Thought d a) = do
   auth <- askConf authorNormalize
-  temp <- askConf dialogueTemplate
+  temp <- askConf thoughtTemplate
 
   apply (temp $ auth a) (reply Nothing Nothing d)
 component p n (Ast.Teller fs) = formats fs
