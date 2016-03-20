@@ -12,9 +12,9 @@ data Section a =
 type Paragraph a = [Component a]
 
 data Component a =
-    Teller [Format a]    -- ^ A narrative description
-  | Dialogue (Reply a) a -- ^ A dialogue reply
-  | Thought (Reply a) a  -- ^ Inner dialogue of the character.
+    Teller [Format a]            -- ^ A narrative description
+  | Dialogue (Reply a) (Maybe a) -- ^ A dialogue reply
+  | Thought (Reply a) (Maybe a)  -- ^ Inner dialogue of the character.
     deriving (Eq,Show)
 
 -- | A character line of dialogue. A reply may contain a descriptive part, which
