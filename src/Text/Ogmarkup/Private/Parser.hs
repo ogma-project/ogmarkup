@@ -235,7 +235,7 @@ word = do lookAhead anyToken -- not the end of the parser
 
           return $ Ast.Word (fromString str)
   where
-    specChar = "\"«»`+*[]<>|_"
+    specChar = "\"«»`+*[]<>|_\'’"
 
     endOfWord :: OgmarkupParser ()
     endOfWord =     eof <|> skip space <|> skip (oneOf specChar) <|> skip mark
@@ -265,6 +265,7 @@ mark = Ast.Punctuation `fmap` (semicolon
         <|> try dash
         <|> hyphen
         <|> comma
+        <|> apostrophe
         <|> try suspensionPoints
         <|> point)
   where
@@ -279,6 +280,7 @@ mark = Ast.Punctuation `fmap` (semicolon
     hyphen           = parseMark (char '-') Ast.Hyphen
     comma            = parseMark (char ',') Ast.Comma
     point            = parseMark (char '.') Ast.Point
+    apostrophe       = parseMark (char '\'' <|> char '’') Ast.Apostrophe
     suspensionPoints = parseMark (string ".." >> many (char '.')) Ast.SuspensionPoints
 
 -- | See 'Ast.OpenQuote'. This parser consumes the following blank (see 'blank')

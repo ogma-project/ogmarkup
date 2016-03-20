@@ -74,6 +74,7 @@ frenchTypo = Typography t prevT nextT
     t Ast.Hyphen = (None, None, "-")
     t Ast.Comma = (None, Normal, ",")
     t Ast.Point = (None, Normal, ".")
+    t Ast.Apostrophe = (None, None, "’")
     t Ast.SuspensionPoints = (None, Normal, "…")
 
     prevT True = Just Ast.LongDash
@@ -100,4 +101,5 @@ englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuo
     t Ast.Hyphen = (None, None, "-")
     t Ast.Comma = (None, Normal, ",")
     t Ast.Point = (None, Normal, ".")
+    t Ast.Apostrophe = (None, None, "'")
     t Ast.SuspensionPoints = (None, Normal, "…")

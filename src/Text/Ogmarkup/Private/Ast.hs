@@ -56,12 +56,13 @@ data Mark =
   | Colon            -- ^ The character @,@
   | Question         -- ^ The character @?@
   | Exclamation      -- ^ The character @!@
-  | OpenQuote        -- ^ The characters @"@ or @«@
-  | CloseQuote       -- ^ The characters @"@ @»@
+  | OpenQuote        -- ^ The character @"@
+  | CloseQuote       -- ^ The character @"@
   | Dash             -- ^ The character – or the sequence @--@
   | LongDash         -- ^ The character — or the sequence @---@
   | Comma            -- ^ The character @,@
   | Point            -- ^ The character @.@
   | Hyphen           -- ^ The character @-@
   | SuspensionPoints -- ^ Two or more @.@ or the character …
+  | Apostrophe       -- ^ The characters @'@ or @’@
     deriving (Show, Eq)
