@@ -72,7 +72,7 @@ initParserState = ParserState False False False
 type OgmarkupParser = GenParser Char ParserState
 
 parse :: OgmarkupParser a -> String -> String -> Either ParseError a
-parse ogma s input = runParser ogma initParserState s input
+parse ogma = runParser ogma initParserState
 
 withEmph :: OgmarkupParser Bool
 withEmph = parseWithEmph <$> getState
@@ -101,13 +101,21 @@ section = aside <|> story
 aside :: IsString a
          => OgmarkupParser (Ast.Section a)
 aside = do asideSeparator
+           cls <- optionMaybe asideClass
            spaces
            ps <- many1 (paragraph <* spaces)
            asideSeparator
            manyTill space (skip (char '\n') <|> eof)
            spaces
 
-           return $ Ast.Aside ps
+           return $ Ast.Aside cls ps
+  where
+    asideClass :: IsString a
+               => OgmarkupParser a
+    asideClass = do a <- many1 letter
+                    asideSeparator
+
+                    return $ fromString a
 
 -- | See 'Ast.Story'.
 story :: IsString a

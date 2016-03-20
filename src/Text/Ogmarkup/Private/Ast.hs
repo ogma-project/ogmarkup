@@ -5,8 +5,8 @@ module Text.Ogmarkup.Private.Ast where
 type Document a = [Section a]
 
 data Section a =
-    Story [Paragraph a] -- ^ The story as it goes
-  | Aside [Paragraph a] -- ^ Something else. Maybe a letter, a flashback, etc.
+    Story [Paragraph a]           -- ^ The story as it goes
+  | Aside (Maybe a) [Paragraph a] -- ^ Something else. Maybe a letter, a flashback, etc.
     deriving (Eq,Show)
 
 type Paragraph a = [Component a]

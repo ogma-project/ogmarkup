@@ -52,13 +52,19 @@ auth :: Maybe Html -> Html
 auth Nothing = "by-anonymus"
 auth (Just auth) = [shamlet|by-#{auth}|]
 
+asideTemp :: Maybe Html -> Template Html
+asideTemp (Just cls) a = [shamlet|<blockquote .#{cls}>
+                                    #{a}|]
+asideTemp _ a = [shamlet|<blockquote>
+                           #{a}|]
+
 htmlConf :: Typography Html
          -> GenConf Html
 htmlConf typo =
   GenConf typo
           (\doc -> [shamlet|<article>#{doc}|])
           id
-          (\aside -> [shamlet|<blockquote>#{aside}|])
+          asideTemp
           (\paragraph -> [shamlet|<p>#{paragraph}|])
           id
           (\a dialogue -> [shamlet|$newline never
