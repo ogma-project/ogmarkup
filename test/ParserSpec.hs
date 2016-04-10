@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parser where
+module ParserSpec where
 
 import           Data.Either
 import           Data.Text                     (Text)
@@ -14,27 +14,29 @@ shouldParse x b = x `shouldBe` Right b
 
 shouldFail x = x `shouldSatisfy` isLeft
 
-parserSpec :: Spec
-parserSpec = describe "atom" $ do
-    it "should not parse an empty string" $ shouldFail (Parser.parse Parser.atom "" "")
+spec :: Spec
+spec = do
+    describe "atom" $ do
+      it "should not parse an empty string" $ shouldFail (Parser.parse Parser.atom "" "")
 
-    it "should parse one word" $ Parser.parse Parser.atom "" hiStr `shouldParse` hiAtom
+      it "should parse one word" $ Parser.parse Parser.atom "" hiStr `shouldParse` hiAtom
 
-    it "should parse one punctuation mark" $
-      Parser.parse Parser.atom "" exclamationStr `shouldParse` exclamationAtom
+      it "should parse one punctuation mark" $
+        Parser.parse Parser.atom "" exclamationStr `shouldParse` exclamationAtom
 
-    it "should parse one quote" $
-      Parser.parse Parser.format "" quoteStr `shouldParse` quoteFormat
+    describe "format" $ do
+      it "should parse one quote" $
+        Parser.parse Parser.format "" quoteStr `shouldParse` quoteFormat
 
-    it "should fail if the quote is ill-formed (no closing quote)" $
-      shouldFail (Parser.parse Parser.format "" illQuoteStr)
+      it "should fail if the quote is ill-formed (no closing quote)" $
+        shouldFail (Parser.parse Parser.format "" illQuoteStr)
 
-    it "should parse nested formats" $
-      Parser.parse Parser.format "" nestedFormatsStr `shouldParse` nestedFormatsFormat
+      it "should parse nested formats" $
+        Parser.parse Parser.format "" nestedFormatsStr `shouldParse` nestedFormatsFormat
 
-    it "should fail with nested same format" $ do
-      shouldFail (Parser.parse Parser.format "" nestedEmphStr)
-      shouldFail (Parser.parse Parser.format "" nestedStrongEmphStr)
+      it "should fail with nested same format" $ do
+        shouldFail (Parser.parse Parser.format "" nestedEmphStr)
+        shouldFail (Parser.parse Parser.format "" nestedStrongEmphStr)
 
 hiStr = "hi"
 hiAtom = Ast.Word "hi"
