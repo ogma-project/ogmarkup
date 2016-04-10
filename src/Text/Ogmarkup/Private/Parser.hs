@@ -176,10 +176,12 @@ reply :: IsString a
       -> Char
       -> OgmarkupParser (Ast.Reply a)
 reply c c' = do char c
+                blank
                 p1 <- many1 format
                 x <- oneOf ['|', c']
 
-                case x of '|' -> do ws <- many1 format
+                case x of '|' -> do blank
+                                    ws <- many1 format
                                     char '|' <?> "Missing | to close the with say"
                                     blank
                                     p2 <- many format
