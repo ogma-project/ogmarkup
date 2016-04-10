@@ -38,6 +38,11 @@ spec = do
         shouldFail (Parser.parse Parser.format "" nestedEmphStr)
         shouldFail (Parser.parse Parser.format "" nestedStrongEmphStr)
 
+    describe "reply" $ do
+      it "should accept spaces at the beginning of dialogs" $ do
+        Parser.parse (Parser.reply '[' ']') "" dialogStartingWithSpaceStr `shouldParse` dialogStartingWithSpaceReply
+        Parser.parse (Parser.reply '[' ']') "" clauseStartingWithSpaceStr `shouldParse` clauseStartingWithSpaceReply
+
 hiStr = "hi"
 hiAtom = Ast.Word "hi"
 
@@ -59,3 +64,15 @@ nestedFormatsFormat = Ast.Emph [ Ast.Raw [ Ast.Word "hi"
 
 nestedEmphStr = "*hi \"*miss*\"*"
 nestedStrongEmphStr = "+hi \"+miss+\"+"
+
+dialogStartingWithSpaceStr    = "[ hi]"
+dialogStartingWithSpaceReply  = Ast.Simple [ Ast.Raw [hiAtom] ]
+
+clauseStartingWithSpaceStr    = "[hi| he said|]"
+clauseStartingWithSpaceReply  = Ast.WithSay [  Ast.Raw [hiAtom] ]
+                                            [  Ast.Raw [ Ast.Word "he"
+                                                       , Ast.Word "said"
+                                                       ]
+                                            ]
+                                            [ ]
+
