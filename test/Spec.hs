@@ -1,7 +1,1 @@
-import Test.Hspec
-
-import Parser
-
-main :: IO ()
-main = do
-  hspec parserSpec
+{-# OPTIONS_GHC -F -pgmF hspec-discover #-}

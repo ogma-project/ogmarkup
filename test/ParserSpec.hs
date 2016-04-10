@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parser where
+module ParserSpec where
 
 import           Data.Either
 import           Data.Text                     (Text)
@@ -14,8 +14,8 @@ shouldParse x b = x `shouldBe` Right b
 
 shouldFail x = x `shouldSatisfy` isLeft
 
-parserSpec :: Spec
-parserSpec = describe "atom" $ do
+spec :: Spec
+spec = describe "atom" $ do
     it "should not parse an empty string" $ shouldFail (Parser.parse Parser.atom "" "")
 
     it "should parse one word" $ Parser.parse Parser.atom "" hiStr `shouldParse` hiAtom
