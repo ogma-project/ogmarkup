@@ -17,8 +17,9 @@ import Text.Blaze.Html (preEscapedToHtml)
 main :: IO ()
 main = do
   input <- readFile "examples/sample.up"
-  case ogmarkup input HtmlConf of
-    Right res -> putStrLn $ renderHtml [shamlet|$doctype 5
+  let res = ogmarkup input HtmlConf
+
+  putStrLn $ renderHtml [shamlet|$doctype 5
 <html>
   <head>
     <meta charset=utf-8>
@@ -47,7 +48,6 @@ main = do
       }
   <body>
     #{res}|]
-    Left err -> print err
 
 data HtmlConf = HtmlConf
 
