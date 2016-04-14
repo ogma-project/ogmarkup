@@ -15,6 +15,9 @@ data Component a =
     Teller [Format a]            -- ^ A narrative description
   | Dialogue (Reply a) (Maybe a) -- ^ A dialogue reply
   | Thought (Reply a) (Maybe a)  -- ^ Inner dialogue of the character.
+  | IllFormed a                  -- ^ If none of the above matched, then output
+                                 --   what follows as-is, the parsing will
+                                 --   be resumed at the next paragraph
     deriving (Eq,Show)
 
 -- | A character line of dialogue. A reply may contain a descriptive part, which

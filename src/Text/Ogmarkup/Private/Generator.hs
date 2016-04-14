@@ -183,6 +183,9 @@ component p n (Ast.Thought d a) = do
 
   apply (temp $ auth a) (reply Nothing Nothing d)
 component p n (Ast.Teller fs) = formats fs
+component p n (Ast.IllFormed ws) = do
+    temp <- askConf errorTemplate
+    apply temp (raw ws)
 
 -- | Process a 'Ast.Paragraph' and deal with sequence of 'Ast.Reply'.
 paragraph :: Monoid a

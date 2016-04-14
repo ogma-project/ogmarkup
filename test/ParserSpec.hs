@@ -43,6 +43,14 @@ spec = do
         Parser.parse (Parser.reply '[' ']') "" dialogStartingWithSpaceStr `shouldParse` dialogStartingWithSpaceReply
         Parser.parse (Parser.reply '[' ']') "" clauseStartingWithSpaceStr `shouldParse` clauseStartingWithSpaceReply
 
+    describe "ill-formed paragraphs" $ do
+      it "ill-formed components should be accepted as-is" $ do
+        Parser.parse Parser.component "" illQuoteStr  `shouldParse` Ast.IllFormed illQuoteStr
+        Parser.parse Parser.component "" nestedEmphStr  `shouldParse` Ast.IllFormed nestedEmphStr
+        Parser.parse Parser.component "" nestedStrongEmphStr  `shouldParse` Ast.IllFormed nestedStrongEmphStr
+      it "an ill-formed paragraph should not prevent parsing correctly the others" $ do
+        Parser.parse Parser.story "" secondParagraphIllFormed `shouldParse` secondParagraphIllFormedPartialCompilation
+
 hiStr = "hi"
 hiAtom = Ast.Word "hi"
 
@@ -76,3 +84,9 @@ clauseStartingWithSpaceReply  = Ast.WithSay [  Ast.Raw [hiAtom] ]
                                             ]
                                             [ ]
 
+secondParagraphIllFormed = hiStr ++ "\n\n" ++ illQuoteStr ++ "\n\n" ++ hiStr
+secondParagraphIllFormedPartialCompilation =
+    Ast.Story [ [ Ast.Teller [ Ast.Raw [ hiAtom ] ] ]
+              , [ Ast.IllFormed illQuoteStr ]
+              , [ Ast.Teller [ Ast.Raw [ hiAtom ] ] ]
+              ]
