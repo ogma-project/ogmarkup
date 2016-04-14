@@ -7,6 +7,7 @@ type Document a = [Section a]
 data Section a =
     Story [Paragraph a]           -- ^ The story as it goes
   | Aside (Maybe a) [Paragraph a] -- ^ Something else. Maybe a letter, a flashback, etc.
+  | Failing a
     deriving (Eq,Show)
 
 type Paragraph a = [Component a]

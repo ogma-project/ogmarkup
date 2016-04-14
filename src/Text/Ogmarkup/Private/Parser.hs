@@ -85,12 +85,12 @@ withinQuote = parseWithinQuote <$> getState
 
 -- | See 'Ast.Document'.
 document :: IsString a
-         => OgmarkupParser (Ast.Document a)
+         => OgmarkupParser (Ast.Document a, String)
 document = do spaces
-              sects <- many1 section
-              eof
+              sects <- many (try section)
+              input <- getInput
 
-              return sects
+              return (sects, input)
 
 -- | See 'Ast.Section'.
 section :: IsString a

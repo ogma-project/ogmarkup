@@ -237,6 +237,11 @@ section (Ast.Story ps) = do temp <- askConf storyTemplate
 section (Ast.Aside cls ps) = do temp <- askConf asideTemplate
                                 apply (temp cls) (paragraphs ps)
 
+section (Ast.Failing f) = do
+    temp <- askConf errorTemplate
+    temp2 <- askConf storyTemplate
+    apply (temp2 . temp) (raw f)
+
 -- | Process a sequence of 'Ast.Section'.
 sections :: (Monoid a, GenConf c a)
          => [Ast.Section a]
