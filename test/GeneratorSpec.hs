@@ -30,6 +30,7 @@ spec = do describe "format" $ do
 testConf :: GenConf Text
 testConf = GenConf frenchTypo
                    (\ doc        -> [st|[doc]#{doc}[/doc]|])
+                   (\ doc        -> [st|[error]#{doc}[/error]|])
                    (\ story      -> [st|[story]#{story}[/story]|])
                    (\ cls aside  -> case cls of
                                       Just c  -> [st|[aside-#{c}]#{aside}[/aside-#{c}]|]

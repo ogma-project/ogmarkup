@@ -130,7 +130,18 @@ paragraph = many1 component <* blank
 -- | See 'Ast.Component'.
 component :: IsString a
           => OgmarkupParser (Ast.Component a)
-component = dialogue <|> thought <|> teller
+component = try (dialogue <|> thought <|> teller) <|> illformed
+
+illformed :: IsString a
+          => OgmarkupParser (Ast.Component a)
+illformed = Ast.IllFormed `fmap` restOfParagraph
+
+restOfParagraph :: IsString a
+                => OgmarkupParser a
+restOfParagraph = do lookAhead anyToken
+                     notFollowedBy endOfParagraph
+                     str <- manyTill anyToken (lookAhead $ try endOfParagraph)
+                     return $ fromString str
 
 -- | See 'Ast.Teller'.
 teller :: IsString a
@@ -321,20 +332,20 @@ asideSeparator = do string "__"
 
                     return ()
 
+endOfParagraph :: OgmarkupParser ()
+endOfParagraph = try betweenTwoSections
+                 <|> asideSeparator -- maybe we need to add (spaces *> ... <* spaces)
+                 <|> eof
+  where
+    betweenTwoSections :: OgmarkupParser ()
+    betweenTwoSections = do count 2 $ manyTill space (eof <|> skip (char '\n'))
+                            spaces
 
 -- | This parser consumes all the white spaces until it finds either an aside
 --   surrounding marker (see 'Ast.Aside'), the end of the document or
 --   one blank line. The latter marks the end of the current paragraph.
 blank :: OgmarkupParser ()
 blank = optional (notFollowedBy endOfParagraph >> spaces)
-  where
-    betweenTwoSections :: OgmarkupParser ()
-    betweenTwoSections = do count 2 $ manyTill space (eof <|> skip (char '\n'))
-                            spaces
-    endOfParagraph :: OgmarkupParser ()
-    endOfParagraph = try betweenTwoSections
-                        <|> asideSeparator -- maybe we need to add (spaces *> ... <* spaces)
-                        <|> eof
 
 -- | @skip p@ parses @p@ and skip the result
 skip :: OgmarkupParser a -> OgmarkupParser ()
