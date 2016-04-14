@@ -30,6 +30,10 @@ main = do
       p {
         text-indent:25px;
       }
+      .error {
+        color: red;
+        background-color: black;
+      }
       .reply {
         color:gray;
       }
@@ -63,6 +67,7 @@ htmlConf :: Typography Html
 htmlConf typo =
   GenConf typo
           (\doc -> [shamlet|<article>#{doc}|])
+          (\doc -> [shamlet|<div .error>#{doc}|])
           id
           asideTemp
           (\paragraph -> [shamlet|<p>#{paragraph}|])

@@ -13,6 +13,7 @@ type Template a = a -> a
 data GenConf a = GenConf { -- | The Typography to use for the generation
                          typography         :: Typography a,
                          documentTemplate   :: Template a,
+                         errorTemplate      :: Template a,
                          storyTemplate      :: Template a,
                          asideTemplate      :: Maybe a -> Template a,
                          paragraphTemplate  :: Template a,
