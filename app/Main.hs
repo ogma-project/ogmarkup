@@ -1,5 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 import           Text.Ogmarkup
 
@@ -15,7 +17,7 @@ import Text.Blaze.Html (preEscapedToHtml)
 main :: IO ()
 main = do
   input <- readFile "examples/sample.up"
-  case ogmarkup input (htmlConf frenchTypo) of
+  case ogmarkup input HtmlConf of
     Right res -> putStrLn $ renderHtml [shamlet|$doctype 5
 <html>
   <head>
@@ -47,44 +49,37 @@ main = do
     #{res}|]
     Left err -> print err
 
-htmlPrintSpace :: Space -> Html
-htmlPrintSpace None = ""
-htmlPrintSpace Normal = " "
-htmlPrintSpace Nbsp = [shamlet|&nbsp;|]
+data HtmlConf = HtmlConf
 
-auth :: Maybe Html -> Html
-auth Nothing = "by-anonymus"
-auth (Just auth) = [shamlet|by-#{auth}|]
+instance GenConf HtmlConf Html where
+  typography _ = frenchTypo
 
-asideTemp :: Maybe Html -> Template Html
-asideTemp (Just cls) a = [shamlet|<blockquote .#{cls}>
-                                    #{a}|]
-asideTemp _ a = [shamlet|<blockquote>
-                           #{a}|]
+  documentTemplate _ doc = [shamlet|<article>#{doc}|]
 
-htmlConf :: Typography Html
-         -> GenConf Html
-htmlConf typo =
-  GenConf typo
-          (\doc -> [shamlet|<article>#{doc}|])
-          (\doc -> [shamlet|<div .error>#{doc}|])
-          id
-          asideTemp
-          (\paragraph -> [shamlet|<p>#{paragraph}|])
-          id
-          (\a dialogue -> [shamlet|$newline never
-                                   <span .dialogue .#{a}>
-                                     #{dialogue}|])
-          (\a thought -> [shamlet|$newline never
-                                  <span .thought .by-#{a}>
-                                    #{thought}|])
-          (\reply -> [shamlet|$newline never
-                              <span .reply>
-                                #{reply}|])
-          (preEscapedToHtml ("</p><p>" :: Text))
-          (\text -> [shamlet|$newline never
-                             <em>#{text}|])
-          (\text -> [shamlet|$newline never
-                             <strong>#{text}|])
-          auth
-          htmlPrintSpace
+  asideTemplate _ (Just cls) a = [shamlet|<blockquote .#{cls}>#{a}|]
+  asideTemplate _ _ a = [shamlet|<blockquote>#{a}|]
+
+  paragraphTemplate _ paragraph = [shamlet|<p>#{paragraph}|]
+
+  dialogueTemplate _ a dialogue = [shamlet|$newline never
+                                           <span .dialogue .#{a}>#{dialogue}|]
+
+  thoughtTemplate _ a thought = [shamlet|$newline never
+                                         <span .thought .by-#{a}>#{thought}|]
+
+  replyTemplate _ reply = [shamlet|$newline never
+                                   <span .reply>#{reply}|]
+
+  betweenDialogue _ = preEscapedToHtml ("</p><p>" :: Text)
+
+  emphTemplate _ text = [shamlet|$newline never
+                                 <em>#{text}|]
+  strongEmphTemplate _ text = [shamlet|$newline never
+                                       <strong>#{text}|]
+
+  authorNormalize _ Nothing = "by-anonymus"
+  authorNormalize _ (Just auth) = [shamlet|by-#{auth}|]
+
+  printSpace _ None = ""
+  printSpace _ Normal = " "
+  printSpace _ Nbsp = [shamlet|&nbsp;|]
