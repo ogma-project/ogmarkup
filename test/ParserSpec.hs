@@ -51,6 +51,10 @@ spec = do
       it "an ill-formed paragraph should not prevent parsing correctly the others" $ do
         Parser.parse Parser.story "" secondParagraphIllFormed `shouldParse` secondParagraphIllFormedPartialCompilation
 
+    describe "document" $ do
+      it "should try its best to compile an ill-formed document" $ do
+        Parser.parse Parser.document "" (storyStr ++ "\n\n" ++ asideIllFormed) `shouldParse` ([storyAst], asideIllFormed)
+
 hiStr = "hi"
 hiAtom = Ast.Word "hi"
 
@@ -90,3 +94,8 @@ secondParagraphIllFormedPartialCompilation =
               , [ Ast.IllFormed illQuoteStr ]
               , [ Ast.Teller [ Ast.Raw [ hiAtom ] ] ]
               ]
+
+storyStr = hiStr
+storyAst = Ast.Story [ [ Ast.Teller [ Ast.Raw [ hiAtom ] ] ] ]
+
+asideIllFormed = "_______letter______\n\n_______letter______\n\nTest.\n\n____________"
