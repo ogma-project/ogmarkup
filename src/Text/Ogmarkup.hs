@@ -29,8 +29,9 @@ import qualified Text.Ogmarkup.Private.Typography as Typo
 -- | From a String, parse and generate an output according to a generation configuration.
 --   The inner definitions of the parser and the generator implies the output
 --   type has to be an instance of the 'IsString' and 'Monoid' classes.
-ogmarkup :: (IsString a, Monoid a) => String
-         -> Conf.GenConf a
+ogmarkup :: (IsString a, Monoid a, Conf.GenConf c a)
+         => String
+         -> c
          -> Either ParseError a
 ogmarkup input conf = let res = Parser.parse Parser.document
                                              ""
