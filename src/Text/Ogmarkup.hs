@@ -23,12 +23,16 @@ import           Data.List
 import           Text.ParserCombinators.Parsec
 import           Data.Monoid
 
-import qualified Text.Ogmarkup.Private.Config            as Conf
-import qualified Text.Ogmarkup.Private.Ast       as Ast
-import qualified Text.Ogmarkup.Private.Generator as Gen
-import qualified Text.Ogmarkup.Private.Parser    as Parser
+import qualified Text.Ogmarkup.Private.Config     as Conf
+import qualified Text.Ogmarkup.Private.Ast        as Ast
+import qualified Text.Ogmarkup.Private.Generator  as Gen
+import qualified Text.Ogmarkup.Private.Parser     as Parser
 import qualified Text.Ogmarkup.Private.Typography as Typo
 
+-- | With the best-effort compilation feature of ogmarkup, when the parser
+--   encounters an error, it can apply two different strategies with the
+--   remaining input to find a new synchronization point. It can search
+--   character by character or line by line.
 data Strategy =
     ByLine
   | ByChar

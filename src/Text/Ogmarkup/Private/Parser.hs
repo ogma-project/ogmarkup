@@ -83,7 +83,10 @@ withStrongEmph = parseWithStrongEmph <$> getState
 withinQuote :: OgmarkupParser Bool
 withinQuote = parseWithinQuote <$> getState
 
--- | See 'Ast.Document'.
+-- | Try its best to parse an ogmarkup document. When it encounters an
+--   error, it returns an Ast and the remaining input.
+--
+--   See 'Ast.Document'.
 document :: IsString a
          => OgmarkupParser (Ast.Document a, String)
 document = do spaces
