@@ -17,8 +17,10 @@ import Text.Blaze.Html (preEscapedToHtml)
 main :: IO ()
 main = do
   input <- readFile "examples/sample.up"
-  case ogmarkup input HtmlConf of
-    Right res -> putStrLn $ renderHtml [shamlet|$doctype 5
+  let res = ogmarkup ByLine input HtmlConf
+      res' = ogmarkup ByChar input HtmlConf
+
+  putStrLn $ renderHtml [shamlet|$doctype 5
 <html>
   <head>
     <meta charset=utf-8>
@@ -46,8 +48,10 @@ main = do
         font-style: italic;
       }
   <body>
-    #{res}|]
-    Left err -> print err
+    <div>
+      #{res}
+    <div>
+      #{res'}|]
 
 data HtmlConf = HtmlConf
 
