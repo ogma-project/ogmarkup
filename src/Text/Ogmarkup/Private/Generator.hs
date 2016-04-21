@@ -1,3 +1,14 @@
+{-|
+Module      : Text.Ogmarkup.Private.Generator
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+The generation of the output from an 'Ast.Ast' is carried out by the 'Generator'
+Monad.
+
+-}
+
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
