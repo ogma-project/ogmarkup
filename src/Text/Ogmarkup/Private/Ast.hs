@@ -1,17 +1,36 @@
+{-|
+Module      : Text.Ogmarkup.Private.Ast
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+An abstract representation of an ogmarkup document.
+-}
+
 module Text.Ogmarkup.Private.Ast where
 
 -- | A ogmarkup document internal representation waiting to be used in order
 --   to generate an output.
 type Document a = [Section a]
 
+-- | A Section within an ogmarkup document is a sequence of paragraph. It
+-- can be part of the story or an aside section like a letter, a song, etc.
+-- We make the distinction between the two case because we want to be able
+-- to apply different style regarding the situation.
 data Section a =
     Story [Paragraph a]           -- ^ The story as it goes
   | Aside (Maybe a) [Paragraph a] -- ^ Something else. Maybe a letter, a flashback, etc.
   | Failing a
     deriving (Eq,Show)
 
+-- | A Paragraph is just a sequence of Component.
 type Paragraph a = [Component a]
 
+-- | A Component is either a narrative text, a line dialogue of a character or
+-- a character inner thought.
+--
+-- We also embed an error component in case we failed to parse a valid
+-- component. This way, we can resume parsing when we find a new paragraph.
 data Component a =
     Teller [Format a]            -- ^ A narrative description
   | Dialogue (Reply a) (Maybe a) -- ^ A dialogue reply
