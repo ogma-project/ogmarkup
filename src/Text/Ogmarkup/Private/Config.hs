@@ -22,13 +22,13 @@ import           Text.Ogmarkup.Private.Typography
 -- | A 'Template' is just synonym for a template of one argument.
 type Template a = a -> a
 
--- | Instances of the 'GenConf' typeclass can be given as a parameter to
+-- | An instance of the 'GenConf' typeclass can be given as a parameter to
 -- a 'Text.Ogmarkup.Private.Generator.Generator'.  In order to prevent GHC
 -- to overabstract this typeclass, there can be only one instance of
 -- GenConf for one datatype. In other words, one datatype can only handle
 -- one return type @c@.
 --
--- For each templates, we give a prefered layout and some hints about the
+-- For each template, we give a prefered layout and some hints about the
 -- default implementation (which is almost always the identity function,
 -- ignoring all the parameters but the generated output.
 --
@@ -39,7 +39,7 @@ type Template a = a -> a
 --     * @FlexibleInstances@
 --     * @MultiParamTypeClasses@
 --
--- On the contrary, GHC will not accept your instance statement.
+-- Otherwise, GHC will not accept your instance statement.
 class (IsString o, Monoid o) => GenConf c o | c -> o where
   -- | Returns a 'Typography' instance to be used by the
   -- 'Text.Ogmarkup.Private.Generator.Generator'.
@@ -103,10 +103,10 @@ class (IsString o, Monoid o) => GenConf c o | c -> o where
                  -> Template o
   tellerTemplate _ = id
 
-  -- | This template is used on audible dialogue. The class name is not
-  -- optional even if the character name is optional for dialogue and
-  -- thought in the ogmarkup grammar.  The `authorNormalize` function is
-  -- used by the generator to get a default value when no character name
+  -- | This template is used on audible dialogue. The class name is
+  -- mandatory even if the character name is optional for dialogues and
+  -- thoughts in the ogmarkup grammar.  The `authorNormalize` function is
+  -- used by the generator to get a default value when no character names
   -- are provided.
   --
   --     * __Layout:__ inline
@@ -116,7 +116,7 @@ class (IsString o, Monoid o) => GenConf c o | c -> o where
                    -> Template o
   dialogueTemplate _ _ = id
 
-  -- | This template is used on audible dialogue. See 'dialogueTemplate' to
+  -- | This template is used on unaudible dialogue. See 'dialogueTemplate' to
   -- get more information on why the class name is not
   -- optional.
   --
@@ -132,7 +132,7 @@ class (IsString o, Monoid o) => GenConf c o | c -> o where
                 -> Template o
   replyTemplate _ = id
 
-  -- | Return a marker to insert between two consecutive dialogue. The
+  -- | Return a marker to insert between two consecutive dialogues. The
   -- default use case is to return the concatenation of the ending mark and
   -- the opening mark of a paragraph.
   -- a paragrap
@@ -143,14 +143,14 @@ class (IsString o, Monoid o) => GenConf c o | c -> o where
                   -> o
   betweenDialogue _ = mempty
 
-  -- | A template to apply emphasis to an output.
+  -- | A template to apply emphasis to an piece of text.
   --
   -- __Default implementation:__ the identity function
   emphTemplate :: c
                -> Template o
   emphTemplate _ = id
 
-  -- | A template to apply stong emphasis (often bold) to an output.
+  -- | A template to apply stong emphasis (often bold) to a piece of text.
   --
   --     * __Layout:__ inline
   --     * __Default implementation:__ `mempty`
@@ -159,7 +159,7 @@ class (IsString o, Monoid o) => GenConf c o | c -> o where
   strongEmphTemplate _ = id
 
   -- | This function is called by a Generator to derive a class name for an
-  -- optional character name
+  -- optional character name.
   --
   --     * __Default implementation:__ simply unwrap the Maybe value, if
   --     Nothing return 'mempty'.
