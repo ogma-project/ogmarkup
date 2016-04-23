@@ -1,3 +1,16 @@
+{-|
+Module      : Text.Ogmarkup
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+The ogmarkup library provides an ogmarkup document compiler. This module is the
+only one you should need to import in your project.
+
+The library is still in an early stage of development, hence the "experimental"
+stability. Be aware the exposed interface may change in future realase.
+-}
+
 module Text.Ogmarkup
     (
       -- * Parse and Generate
@@ -38,7 +51,7 @@ data Strategy =
   | ByChar
 
 -- | From a String, parse and generate an output according to a generation configuration.
---   The inner definitions of the parser and the generator implies the output
+--   The inner definitions of the parser and the generator imply that the output
 --   type has to be an instance of the 'IsString' and 'Monoid' classes.
 ogmarkup :: (IsString a, Monoid a, Conf.GenConf c a)
          => Strategy       -- ^ Best-effort compilation strategy

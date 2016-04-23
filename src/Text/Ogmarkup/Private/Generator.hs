@@ -1,3 +1,14 @@
+{-|
+Module      : Text.Ogmarkup.Private.Generator
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+The generation of the output from an 'Ast.Ast' is carried out by the 'Generator'
+Monad.
+
+-}
+
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
@@ -22,7 +33,7 @@ newtype Generator c a x = Generator { getState :: StateT (a, Maybe (Ast.Atom a))
 -- | Run a 'Generator' monad and get the generated output. The output
 --   type has to implement the class 'Monoid' because the 'Generator' monad
 --   uses the 'mempty' constant as the initial state of the output and then
---   uses 'mappend' to expand the result as it process the generation.
+--   uses 'mappend' to expand the result as it processes the generation.
 runGenerator :: Monoid a
              => Generator c a x -- ^ The 'Generator' to run
              -> c               -- ^ The configuration to use during the generation
@@ -31,17 +42,17 @@ runGenerator gen conf = fst $ runReader (execStateT (getState gen) (mempty, Noth
 
 -- * Low-level 'Generator's
 
--- | Retreive a configuration parameter. Let the output untouched.
+-- | Retrieve a configuration parameter. Let the output untouched.
 askConf :: (c -> b) -- ^ The function to apply to the 'GenConf' variable
-                    --   to retreive the wanted parameter.
+                    --   to retreive the wanted parameter
         -> Generator c a b
 askConf f = f <$> ask
 
 -- | Apply a template to the result of a given 'Generator' before appending it
 --   to the previously generated output.
 apply :: Monoid a
-      => Template a      -- ^ The 'Template' to apply.
-      -> Generator c a x   -- ^ The 'Generator' to run.
+      => Template a      -- ^ The 'Template' to apply
+      -> Generator c a x   -- ^ The 'Generator' to run
       -> Generator c a ()
 apply app gen = do
   (str, maybe) <- get
@@ -50,14 +61,14 @@ apply app gen = do
   (str', maybe') <- get
   put (str `mappend` app str', maybe')
 
--- | Forget about the past and consider the next 'Ast.Atom' is the
+-- | Forget about the past and consider the next 'Ast.Atom' as the
 --   first to be processed.
 reset :: Generator c a ()
 reset = do
   (str, _) <- get
   put (str, Nothing)
 
--- | Append a new sub-output to the generated output
+-- | Append a new sub-output to the generated output.
 raw :: Monoid a
     => a                -- ^ A sub-output to append
     -> Generator c a ()
@@ -68,7 +79,7 @@ raw str' = do
 -- * AST Processing 'Generator's
 
 -- | Process an 'Ast.Atom' and deal with the space to use to separate it from
---   the paramter of the previous call (that is the previous processed
+--   the paramter of the previous call (that is the last processed
 --   'Ast.Atom').
 atom :: (Monoid a, GenConf c a)
      => Ast.Atom a
@@ -162,9 +173,9 @@ reply begin end (Ast.WithSay d ws d') = do
 
 -- | Process a 'Ast.Component'.
 component :: (Monoid a, GenConf c a)
-          => Bool           -- ^ Was the last component an audible dialog?
-          -> Bool           -- ^ Will the next component be an audible dialog?
-          -> Ast.Component a  -- ^ The current to process.
+          => Bool           -- ^ Was the last component a piece of dialog?
+          -> Bool           -- ^ Will the next component be a piece of dialog?
+          -> Ast.Component a  -- ^ The current component to process
           -> Generator c a ()
 component p n (Ast.Dialogue d a) = do
   typo <- askConf typography
@@ -250,7 +261,7 @@ sections (s:r) = do section s
                     sections r
 sections [] = return ()
 
--- | Process a 'Ast.Document', that is a complete Ogmarkup document
+-- | Process a 'Ast.Document', that is a complete Ogmarkup document.
 document :: (Monoid a, GenConf c a)
           => Ast.Document a
          -> Generator c a ()
