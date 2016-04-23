@@ -4,7 +4,7 @@ Copyright   : (c) Ogma Project, 2016
 License     : MIT
 Stability   : experimental
 
-This module provides the 'Typography' datatype along with two default instance
+This module provides the 'Typography' datatype along with two default instances
 for French and English.
 -}
 
@@ -18,7 +18,7 @@ import qualified Text.Ogmarkup.Private.Ast as Ast
 -- * Inner spaces representation
 
 -- | Deal with typographic spaces, especially when it comes to
---   separate two texts. Because Space derives Ord, it is possible
+--   separating two texts. Because Space derives Ord, it is possible
 --   to use min and max to determine which one to use in case of
 --   a conflict.
 data Space =
@@ -30,7 +30,7 @@ data Space =
 -- * Typography definition
 
 -- | A Typography is a data type that tells the caller what space
---   she should privileged before and after a text.
+--   should be privileged before and after a text.
 data Typography a = Typography {
   decide        :: Ast.Mark -> (Space, Space, a), -- ^ For a given 'Ast.Mark',
                                                   --  returns a tuple with the
@@ -81,7 +81,7 @@ normalizeAtom t (Ast.Word w) = w
 -- * Ready-to-use Typography
 
 -- | A proposal for the French typography. It can be used with several generation
---   approach, as it stay very generic. Required the output type to be an
+--   approaches, as it remains very generic. Requires the output type to be an
 --   instance of 'IsString'.
 frenchTypo :: IsString a => Typography a
 frenchTypo = Typography t prevT nextT
@@ -108,7 +108,7 @@ frenchTypo = Typography t prevT nextT
     nextT False = Just Ast.CloseQuote
 
 -- | A proposal for the English typography. It can be used with several generation
---   approach, as it stay very generic. Required the output type to be an
+--   approaches, as it remains very generic. Requires the output type to be an
 --   instance of 'IsString'.
 englishTypo :: IsString a => Typography a
 englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuote)

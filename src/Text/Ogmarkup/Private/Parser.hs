@@ -24,10 +24,10 @@ import qualified Text.Ogmarkup.Private.Ast     as Ast
 -- | Keep track of the currently opened formats.
 data ParserState = ParserState { -- | Already parsing text with emphasis
                                  parseWithEmph        :: Bool
-                                 -- |_Already parsing text with strong
+                                 -- | Already parsing text with strong
                                  --   emphasis
                                , parseWithStrongEmph  :: Bool
-                                 -- |_Already parsing a quote
+                                 -- | Already parsing a quote
                                , parseWithinQuote     :: Bool
                                }
 
@@ -73,7 +73,7 @@ enterQuote = do st <- getState
                   else do setState st { parseWithinQuote = True }
                           return ()
 
--- | Update the 'ParserState' to be able to parse input with an input
+-- | Update the 'ParserState' to be able to parse an input
 -- surrounded by quotes again.
 leaveQuote :: OgmarkupParser ()
 leaveQuote = do st <- getState
@@ -87,7 +87,7 @@ leaveQuote = do st <- getState
 initParserState :: ParserState
 initParserState = ParserState False False False
 
--- | An ogmarkup parser processes 'Char' tokens and carries a 'ParserState'
+-- | An ogmarkup parser processes 'Char' tokens and carries a 'ParserState'.
 type OgmarkupParser = GenParser Char ParserState
 
 -- | A wrapper around the 'runParser' function of Parsec. It uses
@@ -154,7 +154,7 @@ illformed = Ast.IllFormed `fmap` restOfParagraph
 
 -- | Parse the rest of the current paragraph with no regards for the
 -- ogmarkup syntax. This Parser is used when the document is ill-formed, to
--- find a new point of synchronisation.
+-- find a new point of synchronization.
 restOfParagraph :: IsString a
                 => OgmarkupParser a
 restOfParagraph = do lookAhead anyToken
@@ -182,7 +182,7 @@ thought = talk '<' '>' Ast.Thought
 talk :: IsString a
      => Char -- ^ A character to mark the begining of a reply
      -> Char -- ^ A character to mark the end of a reply
-     -> (Ast.Reply a -> Maybe a -> Ast.Component a) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation.
+     -> (Ast.Reply a -> Maybe a -> Ast.Component a) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation
      -> OgmarkupParser (Ast.Component a)
 talk c c' constructor = do
   rep <- reply c c'
@@ -371,6 +371,6 @@ endOfParagraph = try betweenTwoSections
 blank :: OgmarkupParser ()
 blank = optional (notFollowedBy endOfParagraph >> spaces)
 
--- | @skip p@ parses @p@ and skip the result
+-- | @skip p@ parses @p@ and skips the result.
 skip :: OgmarkupParser a -> OgmarkupParser ()
 skip = void
