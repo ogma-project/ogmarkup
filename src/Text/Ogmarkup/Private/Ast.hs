@@ -1,27 +1,46 @@
+{-|
+Module      : Text.Ogmarkup.Private.Ast
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+An abstract representation of an ogmarkup document.
+-}
+
 module Text.Ogmarkup.Private.Ast where
 
 -- | A ogmarkup document internal representation waiting to be used in order
 --   to generate an output.
 type Document a = [Section a]
 
+-- | A Section within an ogmarkup document is a sequence of paragraphs. It
+-- can be part of the story or an aside section like a letter, a song, etc.
+-- We make the distinction between the two cases because we want to be able
+-- to apply different style depending on the situation.
 data Section a =
     Story [Paragraph a]           -- ^ The story as it goes
   | Aside (Maybe a) [Paragraph a] -- ^ Something else. Maybe a letter, a flashback, etc.
   | Failing a
     deriving (Eq,Show)
 
+-- | A Paragraph is just a sequence of Component.
 type Paragraph a = [Component a]
 
+-- | A Component is either a narrative text, a character's line of dialogue or
+-- a character's inner thought.
+--
+-- We also embed an error Component in case we fail to parse a valid
+-- component. This way, we can resume parsing when we meet a new paragraph.
 data Component a =
     Teller [Format a]            -- ^ A narrative description
   | Dialogue (Reply a) (Maybe a) -- ^ A dialogue reply
-  | Thought (Reply a) (Maybe a)  -- ^ Inner dialogue of the character.
+  | Thought (Reply a) (Maybe a)  -- ^ Inner dialogue of the character
   | IllFormed a                  -- ^ If none of the above matched, then output
                                  --   what follows as-is, the parsing will
                                  --   be resumed at the next paragraph
     deriving (Eq,Show)
 
--- | A character line of dialogue. A reply may contain a descriptive part, which
+-- | A character's line of dialogue. A reply may contain a descriptive part, which
 --   is not part of what the character actually says or thinks. We call the
 --   latter a "with say" reply untill someone gives use a better name for it.
 data Reply a =
@@ -44,8 +63,8 @@ data Format a =
 --
 --   Note that, by construction, 'OpenQuote' and 'CloseQuote' are not valid
 --   'Mark' values here.  Indeed, they are implicit with the 'Quote'
---   constructor. This choice allows to enforce that an opened quote needs to
---   be closed.
+--   constructor. This design allows the parser to enforce that an opened quote
+--   needs to be closed.
 data Atom a =
     Word a           -- ^ A wrapped string
   | Punctuation Mark -- ^ A punctuation mark

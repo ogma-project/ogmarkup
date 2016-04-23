@@ -1,10 +1,18 @@
+{-|
+Module      : Text.Ogmarkup.Private.Parser
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+This module provides several parsers that can be used in order to
+extract the 'Ast' of an Ogmarkup document.
+
+Please consider that only 'document' should be used outside this
+module.
+-}
+
 {-# LANGUAGE OverloadedStrings #-}
 
--- | This module provides several parsers that can be used in order to
---   extract the 'Ast' of an Ogmarkup document.
---
---   Please consider that only 'document' should be used outside this
---   module.
 module Text.Ogmarkup.Private.Parser where
 
 import           Control.Monad
@@ -16,13 +24,14 @@ import qualified Text.Ogmarkup.Private.Ast     as Ast
 -- | Keep track of the currently opened formats.
 data ParserState = ParserState { -- | Already parsing text with emphasis
                                  parseWithEmph        :: Bool
-                                 -- |_Already parsing text with strong
+                                 -- | Already parsing text with strong
                                  --   emphasis
                                , parseWithStrongEmph  :: Bool
-                                 -- |_Already parsing a quote
+                                 -- | Already parsing a quote
                                , parseWithinQuote     :: Bool
                                }
 
+-- | Update the 'ParserState' to guard against nested emphasis.
 enterEmph :: OgmarkupParser ()
 enterEmph = do st <- getState
                if parseWithEmph st
@@ -30,6 +39,8 @@ enterEmph = do st <- getState
                  else do setState st { parseWithEmph = True }
                          return ()
 
+-- | Update the 'ParserState' to be able to parse input with emphasis
+-- again.
 leaveEmph :: OgmarkupParser ()
 leaveEmph = do st <- getState
                if parseWithEmph st
@@ -37,6 +48,7 @@ leaveEmph = do st <- getState
                          return ()
                  else fail "cannot leave emphasis when you did not enter"
 
+-- | Update the 'ParserState' to guard against nested strong emphasis.
 enterStrongEmph :: OgmarkupParser ()
 enterStrongEmph = do st <- getState
                      if parseWithStrongEmph st
@@ -44,6 +56,8 @@ enterStrongEmph = do st <- getState
                        else do setState st { parseWithStrongEmph = True }
                                return ()
 
+-- | Update the 'ParserState' to be able to parse input with strong emphasis
+-- again.
 leaveStrongEmph :: OgmarkupParser ()
 leaveStrongEmph = do st <- getState
                      if parseWithStrongEmph st
@@ -51,6 +65,7 @@ leaveStrongEmph = do st <- getState
                                return ()
                        else fail "cannot leave strong emphasis when you did not enter"
 
+-- | Update the 'ParserState' to guard against nested quoted inputs.
 enterQuote :: OgmarkupParser ()
 enterQuote = do st <- getState
                 if parseWithinQuote st
@@ -58,6 +73,8 @@ enterQuote = do st <- getState
                   else do setState st { parseWithinQuote = True }
                           return ()
 
+-- | Update the 'ParserState' to be able to parse an input
+-- surrounded by quotes again.
 leaveQuote :: OgmarkupParser ()
 leaveQuote = do st <- getState
                 if parseWithinQuote st
@@ -65,23 +82,18 @@ leaveQuote = do st <- getState
                           return ()
                   else fail "cannot leave quote when you did not enter"
 
+-- | A initial ParserState instance to be used at the begining of
+-- a document parsing.
 initParserState :: ParserState
 initParserState = ParserState False False False
 
--- | An ogmarkup parser processes 'Char' tokens and carries a 'ParserState'
+-- | An ogmarkup parser processes 'Char' tokens and carries a 'ParserState'.
 type OgmarkupParser = GenParser Char ParserState
 
+-- | A wrapper around the 'runParser' function of Parsec. It uses
+-- 'initParserState' as an initial state.
 parse :: OgmarkupParser a -> String -> String -> Either ParseError a
 parse ogma = runParser ogma initParserState
-
-withEmph :: OgmarkupParser Bool
-withEmph = parseWithEmph <$> getState
-
-withStrongEmph :: OgmarkupParser Bool
-withStrongEmph = parseWithStrongEmph <$> getState
-
-withinQuote :: OgmarkupParser Bool
-withinQuote = parseWithinQuote <$> getState
 
 -- | Try its best to parse an ogmarkup document. When it encounters an
 --   error, it returns an Ast and the remaining input.
@@ -135,10 +147,14 @@ component :: IsString a
           => OgmarkupParser (Ast.Component a)
 component = try (dialogue <|> thought <|> teller) <|> illformed
 
+-- | See 'Ast.IllFormed'.
 illformed :: IsString a
           => OgmarkupParser (Ast.Component a)
 illformed = Ast.IllFormed `fmap` restOfParagraph
 
+-- | Parse the rest of the current paragraph with no regards for the
+-- ogmarkup syntax. This Parser is used when the document is ill-formed, to
+-- find a new point of synchronization.
 restOfParagraph :: IsString a
                 => OgmarkupParser a
 restOfParagraph = do lookAhead anyToken
@@ -161,23 +177,25 @@ thought :: IsString a
         => OgmarkupParser (Ast.Component a)
 thought = talk '<' '>' Ast.Thought
 
--- | @'talk' c c' constr@ wrap a reply surrounded by @c@ and @c'@ inside
+-- | @'talk' c c' constr@ wraps a reply surrounded by @c@ and @c'@ inside
 --   @constr@ (either 'Ast.Dialogue' or 'Ast.Thought').
 talk :: IsString a
      => Char -- ^ A character to mark the begining of a reply
      -> Char -- ^ A character to mark the end of a reply
-     -> (Ast.Reply a -> Maybe a -> Ast.Component a) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation.
+     -> (Ast.Reply a -> Maybe a -> Ast.Component a) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation
      -> OgmarkupParser (Ast.Component a)
 talk c c' constructor = do
   rep <- reply c c'
-  auth <- optionMaybe authorName
+  auth <- optionMaybe characterName
   blank
 
   return $ constructor rep auth
 
-authorName :: IsString a
+-- | Parse the name of the character which speaks or thinks. According to
+-- the ogmarkup syntax, it is surrounded by parentheses.
+characterName :: IsString a
            => OgmarkupParser a
-authorName = do
+characterName = do
   char '('
   notFollowedBy (char ')') <?> "Empty character names are not allowed"
   auth <- manyTill anyToken (char ')') <?> "Missing closing )"
@@ -240,6 +258,7 @@ strongEmph = do char '+'
                 leaveStrongEmph
                 return . Ast.StrongEmph $ (f:fs)
 
+-- | See 'Ast.Quote'.
 quote :: IsString a
       => OgmarkupParser (Ast.Format a)
 quote = do char '"'
@@ -335,9 +354,11 @@ asideSeparator = do string "__"
 
                     return ()
 
+-- | The end of a paragraph is the end of the document or two blank lines
+-- or an aside separator, that is a line of underscores.
 endOfParagraph :: OgmarkupParser ()
 endOfParagraph = try betweenTwoSections
-                 <|> asideSeparator -- maybe we need to add (spaces *> ... <* spaces)
+                 <|> asideSeparator
                  <|> eof
   where
     betweenTwoSections :: OgmarkupParser ()
@@ -350,6 +371,6 @@ endOfParagraph = try betweenTwoSections
 blank :: OgmarkupParser ()
 blank = optional (notFollowedBy endOfParagraph >> spaces)
 
--- | @skip p@ parses @p@ and skip the result
+-- | @skip p@ parses @p@ and skips the result.
 skip :: OgmarkupParser a -> OgmarkupParser ()
 skip = void
