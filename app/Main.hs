@@ -1,5 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 import           Text.Ogmarkup
 
@@ -15,8 +17,10 @@ import Text.Blaze.Html (preEscapedToHtml)
 main :: IO ()
 main = do
   input <- readFile "examples/sample.up"
-  case ogmarkup input (htmlConf frenchTypo) of
-    Right res -> putStrLn $ renderHtml [shamlet|$doctype 5
+  let res = ogmarkup ByLine input HtmlConf
+      res' = ogmarkup ByChar input HtmlConf
+
+  putStrLn $ renderHtml [shamlet|$doctype 5
 <html>
   <head>
     <meta charset=utf-8>
@@ -30,6 +34,10 @@ main = do
       p {
         text-indent:25px;
       }
+      .error {
+        color: red;
+        background-color: black;
+      }
       .reply {
         color:gray;
       }
@@ -40,34 +48,42 @@ main = do
         font-style: italic;
       }
   <body>
-    #{res}|]
-    Left err -> print err
+    <div>
+      #{res}
+    <div>
+      #{res'}|]
 
-htmlPrintSpace :: Space -> Html
-htmlPrintSpace None = ""
-htmlPrintSpace Normal = " "
-htmlPrintSpace Nbsp = [shamlet|&nbsp;|]
+data HtmlConf = HtmlConf
 
-htmlConf :: Typography Html
-         -> GenConf Html
-htmlConf typo =
-  GenConf typo
-          (\doc -> [shamlet|<article>#{doc}|])
-          id
-          (\aside -> [shamlet|<blockquote>#{aside}|])
-          (\paragraph -> [shamlet|<p>#{paragraph}|])
-          id
-          (\a dialogue -> [shamlet|$newline never
-                                   <span .dialogue .by-#{a}>
-                                     #{dialogue}|])
-          (\a thought -> [shamlet|$newline never
-                                  <span .thought .by-#{a}>
-                                    #{thought}|])
-          (\reply -> [shamlet|$newline never
-                              <span .reply>
-                                #{reply}|])
-          (preEscapedToHtml ("</p><p>" :: Text))
-          (\text -> [shamlet|<emph>#{text}|])
-          (\text -> [shamlet|<strong>#{text}|])
-          id
-          htmlPrintSpace
+instance GenConf HtmlConf Html where
+  typography _ = frenchTypo
+
+  documentTemplate _ doc = [shamlet|<article>#{doc}|]
+
+  asideTemplate _ (Just cls) a = [shamlet|<blockquote .#{cls}>#{a}|]
+  asideTemplate _ _ a = [shamlet|<blockquote>#{a}|]
+
+  paragraphTemplate _ paragraph = [shamlet|<p>#{paragraph}|]
+
+  dialogueTemplate _ a dialogue = [shamlet|$newline never
+                                           <span .dialogue .#{a}>#{dialogue}|]
+
+  thoughtTemplate _ a thought = [shamlet|$newline never
+                                         <span .thought .by-#{a}>#{thought}|]
+
+  replyTemplate _ reply = [shamlet|$newline never
+                                   <span .reply>#{reply}|]
+
+  betweenDialogue _ = preEscapedToHtml ("</p><p>" :: Text)
+
+  emphTemplate _ text = [shamlet|$newline never
+                                 <em>#{text}|]
+  strongEmphTemplate _ text = [shamlet|$newline never
+                                       <strong>#{text}|]
+
+  authorNormalize _ Nothing = "by-anonymus"
+  authorNormalize _ (Just auth) = [shamlet|by-#{auth}|]
+
+  printSpace _ None = ""
+  printSpace _ Normal = " "
+  printSpace _ Nbsp = [shamlet|&nbsp;|]

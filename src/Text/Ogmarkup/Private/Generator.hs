@@ -1,3 +1,14 @@
+{-|
+Module      : Text.Ogmarkup.Private.Generator
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+The generation of the output from an 'Ast.Ast' is carried out by the 'Generator'
+Monad.
+
+-}
+
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
@@ -16,33 +27,33 @@ import           Text.Ogmarkup.Private.Typography
 -- | The 'Generator' Monad is eventually used to generate an output from a
 --   given 'Ast.Document. Internally, it keeps track of the previous processed
 --   'Ast.Atom' in order to deal with atom separation.
-newtype Generator a x = Generator { getState :: StateT (a, Maybe (Ast.Atom a)) (Reader (GenConf a)) x }
-  deriving (Functor, Applicative, Monad, MonadState (a, Maybe (Ast.Atom a)), MonadReader (GenConf a))
+newtype Generator c a x = Generator { getState :: StateT (a, Maybe (Ast.Atom a)) (Reader c) x }
+  deriving (Functor, Applicative, Monad, MonadState (a, Maybe (Ast.Atom a)), MonadReader c)
 
 -- | Run a 'Generator' monad and get the generated output. The output
 --   type has to implement the class 'Monoid' because the 'Generator' monad
 --   uses the 'mempty' constant as the initial state of the output and then
---   uses 'mappend' to expand the result as it process the generation.
+--   uses 'mappend' to expand the result as it processes the generation.
 runGenerator :: Monoid a
-             => Generator a x -- ^ The 'Generator' to run
-             -> GenConf a     -- ^ The configuration to use during the generation
-             -> a             -- ^ The output
+             => Generator c a x -- ^ The 'Generator' to run
+             -> c               -- ^ The configuration to use during the generation
+             -> a              -- ^ The output
 runGenerator gen conf = fst $ runReader (execStateT (getState gen) (mempty, Nothing)) conf
 
 -- * Low-level 'Generator's
 
--- | Retreive a configuration parameter. Let the output untouched.
-askConf :: (GenConf a -> b) -- ^ The function to apply to the 'GenConf' variable
-                            --   To retreive the wanted parameter.
-        -> Generator a b
+-- | Retrieve a configuration parameter. Let the output untouched.
+askConf :: (c -> b) -- ^ The function to apply to the 'GenConf' variable
+                    --   to retreive the wanted parameter
+        -> Generator c a b
 askConf f = f <$> ask
 
 -- | Apply a template to the result of a given 'Generator' before appending it
 --   to the previously generated output.
 apply :: Monoid a
-      => Template a      -- ^ The 'Template' to apply.
-      -> Generator a x   -- ^ The 'Generator' to run.
-      -> Generator a ()
+      => Template a      -- ^ The 'Template' to apply
+      -> Generator c a x   -- ^ The 'Generator' to run
+      -> Generator c a ()
 apply app gen = do
   (str, maybe) <- get
   put (mempty, maybe)
@@ -50,17 +61,17 @@ apply app gen = do
   (str', maybe') <- get
   put (str `mappend` app str', maybe')
 
--- | Forget about the past and consider the next 'Ast.Atom' is the
+-- | Forget about the past and consider the next 'Ast.Atom' as the
 --   first to be processed.
-reset :: Generator a ()
+reset :: Generator c a ()
 reset = do
   (str, _) <- get
   put (str, Nothing)
 
--- | Append a new sub-output to the generated output
+-- | Append a new sub-output to the generated output.
 raw :: Monoid a
     => a                -- ^ A sub-output to append
-    -> Generator a ()
+    -> Generator c a ()
 raw str' = do
   (str, maybePrev) <- get
   put (str `mappend` str', maybePrev)
@@ -68,11 +79,11 @@ raw str' = do
 -- * AST Processing 'Generator's
 
 -- | Process an 'Ast.Atom' and deal with the space to use to separate it from
---   the paramter of the previous call (that is the previous processed
+--   the paramter of the previous call (that is the last processed
 --   'Ast.Atom').
-atom :: Monoid a
+atom :: (Monoid a, GenConf c a)
      => Ast.Atom a
-     -> Generator a ()
+     -> Generator c a ()
 atom text = do
   (str, maybePrev) <- get
   typo <- askConf typography
@@ -88,69 +99,58 @@ atom text = do
     Nothing -> put (str `mappend` normalizeAtom typo text, Just text)
 
 -- | Call 'atom' if the parameter is not 'Nothing'. Otherwise, do nothing.
-maybeAtom :: Monoid a
+maybeAtom :: (Monoid a, GenConf c a)
           => Maybe (Ast.Atom a)
-          -> Generator a ()
+          -> Generator c a ()
 maybeAtom (Just text) = atom text
 maybeAtom Nothing = return ()
 
 -- | Process a sequence of 'Ast.Atom'.
-atoms :: Monoid a
+atoms :: (Monoid a, GenConf c a)
       => [Ast.Atom a]
-      -> Generator a ()
+      -> Generator c a ()
 atoms (f:rst) = do
   atom f
   atoms rst
 atoms [] = return ()
 
--- | Process a 'Ast.Collection'. In particular, it deal with the quotes when
---   required.
-collection :: Monoid a
-           => Ast.Collection a
-           -> Generator a ()
-collection (Ast.Quote as) = do atom (Ast.Punctuation Ast.OpenQuote)
-                               atoms as
-                               atom (Ast.Punctuation Ast.CloseQuote)
-
-collection (Ast.Text as) = atoms as
-
--- | Process a sequence of 'Ast.Collection'.
-collections :: Monoid a
-            => [Ast.Collection a]
-            -> Generator a ()
-collections (f:rst) = do collection f
-                         collections rst
-collections [] = return ()
-
 -- | Process a 'Ast.Format'.
-format :: Monoid a
+format :: (Monoid a, GenConf c a)
        => Ast.Format a
-       -> Generator a ()
-format (Ast.Raw cs) = collections cs
-format (Ast.Emph cs) = do
+       -> Generator c a ()
+
+format (Ast.Raw as) = atoms as
+
+format (Ast.Emph fs) = do
   temp <- askConf emphTemplate
 
-  apply temp (collections cs)
-format (Ast.StrongEmph cs) = do
+  apply temp (formats fs)
+
+format (Ast.StrongEmph fs) = do
   temp <- askConf strongEmphTemplate
 
-  apply temp (collections cs)
+  apply temp (formats fs)
+
+format (Ast.Quote fs) = do
+  atom $ Ast.Punctuation Ast.OpenQuote
+  formats fs
+  atom $ Ast.Punctuation Ast.CloseQuote
 
 -- | Process a sequence of 'Ast.Format'.
-formats :: Monoid a
+formats :: (Monoid a, GenConf c a)
            => [Ast.Format a]
-           -> Generator a ()
+           -> Generator c a ()
 formats (f:rst) = do
   format f
   formats rst
 formats [] = return ()
 
 -- | Process a 'Ast.Reply'.
-reply :: Monoid a
+reply :: (Monoid a, GenConf c a)
       => Maybe (Ast.Atom a)
       -> Maybe (Ast.Atom a)
       -> Ast.Reply a
-      -> Generator a ()
+      -> Generator c a ()
 reply begin end (Ast.Simple d) = do
   temp <- askConf replyTemplate
 
@@ -172,11 +172,11 @@ reply begin end (Ast.WithSay d ws d') = do
                maybeAtom end
 
 -- | Process a 'Ast.Component'.
-component :: Monoid a
-          => Bool           -- ^ Was the last component an audible dialog?
-          -> Bool           -- ^ Will the next component be an audible dialog?
-          -> Ast.Component a  -- ^ The current to process.
-          -> Generator a ()
+component :: (Monoid a, GenConf c a)
+          => Bool           -- ^ Was the last component a piece of dialog?
+          -> Bool           -- ^ Will the next component be a piece of dialog?
+          -> Ast.Component a  -- ^ The current component to process
+          -> Generator c a ()
 component p n (Ast.Dialogue d a) = do
   typo <- askConf typography
   auth <- askConf authorNormalize
@@ -190,15 +190,18 @@ component p n (Ast.Dialogue d a) = do
 
 component p n (Ast.Thought d a) = do
   auth <- askConf authorNormalize
-  temp <- askConf dialogueTemplate
+  temp <- askConf thoughtTemplate
 
   apply (temp $ auth a) (reply Nothing Nothing d)
 component p n (Ast.Teller fs) = formats fs
+component p n (Ast.IllFormed ws) = do
+    temp <- askConf errorTemplate
+    apply temp (raw ws)
 
 -- | Process a 'Ast.Paragraph' and deal with sequence of 'Ast.Reply'.
-paragraph :: Monoid a
+paragraph :: (Monoid a, GenConf c a)
           => Ast.Paragraph a
-          -> Generator a ()
+          -> Generator c a ()
 paragraph l@(h:r) = do
   temp <- askConf paragraphTemplate
   between <- askConf betweenDialogue
@@ -212,12 +215,12 @@ paragraph l@(h:r) = do
     willBeDialogue (h:n:r) = isDialogue n
     willBeDialogue _ = False
 
-    recGen :: Monoid a
+    recGen :: (Monoid a, GenConf c a)
            => a
            -> Bool
            -> Bool
            -> [Ast.Component a]
-           -> Generator a ()
+           -> Generator c a ()
     recGen between p n (c:rst) = do
       case (p, isDialogue c) of (True, True) -> do raw between
                                                    reset
@@ -227,37 +230,41 @@ paragraph l@(h:r) = do
     recGen _ _ _ [] = return ()
 
 -- | Process a sequence of 'Ast.Paragraph'.
-paragraphs :: Monoid a
+paragraphs :: (Monoid a, GenConf c a)
            => [Ast.Paragraph a]
-           -> Generator a ()
+           -> Generator c a ()
 paragraphs (h:r) = do paragraph h
                       reset
                       paragraphs r
 paragraphs [] = return ()
 
 -- | Process a 'Ast.Section'.
-section :: Monoid a
+section :: (Monoid a, GenConf c a)
         => Ast.Section a
-        -> Generator a ()
+        -> Generator c a ()
 section (Ast.Story ps) = do temp <- askConf storyTemplate
 
                             apply temp (paragraphs ps)
-section (Ast.Aside ps) = do temp <- askConf asideTemplate
+section (Ast.Aside cls ps) = do temp <- askConf asideTemplate
+                                apply (temp cls) (paragraphs ps)
 
-                            apply temp (paragraphs ps)
+section (Ast.Failing f) = do
+    temp <- askConf errorTemplate
+    temp2 <- askConf storyTemplate
+    apply (temp2 . temp) (raw f)
 
 -- | Process a sequence of 'Ast.Section'.
-sections :: Monoid a
+sections :: (Monoid a, GenConf c a)
          => [Ast.Section a]
-         -> Generator a ()
+         -> Generator c a ()
 sections (s:r) = do section s
                     sections r
 sections [] = return ()
 
--- | Process a 'Ast.Document', that is a complete Ogmarkup document
-document :: Monoid a
+-- | Process a 'Ast.Document', that is a complete Ogmarkup document.
+document :: (Monoid a, GenConf c a)
           => Ast.Document a
-         -> Generator a ()
+         -> Generator c a ()
 document d = do temp <- askConf documentTemplate
 
                 apply temp (sections d)

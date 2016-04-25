@@ -1,3 +1,13 @@
+{-|
+Module      : Text.Ogmarkup.Private.Typography
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+This module provides the 'Typography' datatype along with two default instances
+for French and English.
+-}
+
 {-# LANGUAGE OverloadedStrings #-}
 
 module Text.Ogmarkup.Private.Typography where
@@ -8,7 +18,7 @@ import qualified Text.Ogmarkup.Private.Ast as Ast
 -- * Inner spaces representation
 
 -- | Deal with typographic spaces, especially when it comes to
---   separate two texts. Because Space derives Ord, it is possible
+--   separating two texts. Because Space derives Ord, it is possible
 --   to use min and max to determine which one to use in case of
 --   a conflict.
 data Space =
@@ -20,13 +30,27 @@ data Space =
 -- * Typography definition
 
 -- | A Typography is a data type that tells the caller what space
---   she should privileged before and after a text.
+--   should be privileged before and after a text.
 data Typography a = Typography {
-  decide        :: Ast.Mark -> (Space, Space, a),
-  openDialogue  :: Bool -> Maybe Ast.Mark,
-  closeDialogue :: Bool -> Maybe Ast.Mark
+  decide        :: Ast.Mark -> (Space, Space, a), -- ^ For a given 'Ast.Mark',
+                                                  --  returns a tuple with the
+                                                  --  spaces to use before
+                                                  --  and after the
+                                                  --  punctuation mark and
+                                                  --  its output value.
+  openDialogue  :: Bool -> Maybe Ast.Mark,        -- ^ Which mark to use to
+                                                  -- open a dialogue. If
+                                                  -- the parameter is True,
+                                                  -- there were another
+                                                  -- dialogue just before.
+  closeDialogue :: Bool -> Maybe Ast.Mark         -- ^ Which mark to use to
+                                                  -- close a dialogue. If
+                                                  -- the parameter is True,
+                                                  -- there is another
+                                                  -- dialogue just after.
   }
 
+-- | Apply the function to each 'Ast.Mark' output value
 instance Functor Typography where
   f `fmap` (Typography d o c) = let d' m = let (s1, s2, x) = d m in (s1, s2, f x)
                                 in Typography d' o c
@@ -56,8 +80,8 @@ normalizeAtom t (Ast.Word w) = w
 
 -- * Ready-to-use Typography
 
--- | A proposal for tho French typography. It can be used with several generation
---   approach, as it stay very generic. Required the output type to be an
+-- | A proposal for the French typography. It can be used with several generation
+--   approaches, as it remains very generic. Requires the output type to be an
 --   instance of 'IsString'.
 frenchTypo :: IsString a => Typography a
 frenchTypo = Typography t prevT nextT
@@ -74,6 +98,7 @@ frenchTypo = Typography t prevT nextT
     t Ast.Hyphen = (None, None, "-")
     t Ast.Comma = (None, Normal, ",")
     t Ast.Point = (None, Normal, ".")
+    t Ast.Apostrophe = (None, None, "’")
     t Ast.SuspensionPoints = (None, Normal, "…")
 
     prevT True = Just Ast.LongDash
@@ -82,8 +107,8 @@ frenchTypo = Typography t prevT nextT
     nextT True = Nothing
     nextT False = Just Ast.CloseQuote
 
--- | A proposal for tho English typography. It can be used with several generation
---   approach, as it stay very generic. Required the output type to be an
+-- | A proposal for the English typography. It can be used with several generation
+--   approaches, as it remains very generic. Requires the output type to be an
 --   instance of 'IsString'.
 englishTypo :: IsString a => Typography a
 englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuote)
@@ -100,4 +125,5 @@ englishTypo = Typography t (pure $ Just Ast.OpenQuote) (pure $ Just Ast.CloseQuo
     t Ast.Hyphen = (None, None, "-")
     t Ast.Comma = (None, Normal, ",")
     t Ast.Point = (None, Normal, ".")
+    t Ast.Apostrophe = (None, None, "'")
     t Ast.SuspensionPoints = (None, Normal, "…")

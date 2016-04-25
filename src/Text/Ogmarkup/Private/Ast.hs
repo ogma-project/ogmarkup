@@ -1,23 +1,46 @@
+{-|
+Module      : Text.Ogmarkup.Private.Ast
+Copyright   : (c) Ogma Project, 2016
+License     : MIT
+Stability   : experimental
+
+An abstract representation of an ogmarkup document.
+-}
+
 module Text.Ogmarkup.Private.Ast where
 
 -- | A ogmarkup document internal representation waiting to be used in order
 --   to generate an output.
 type Document a = [Section a]
 
+-- | A Section within an ogmarkup document is a sequence of paragraphs. It
+-- can be part of the story or an aside section like a letter, a song, etc.
+-- We make the distinction between the two cases because we want to be able
+-- to apply different style depending on the situation.
 data Section a =
-    Story [Paragraph a] -- ^ The story as it goes
-  | Aside [Paragraph a] -- ^ Something else. Maybe a letter, a flashback, etc.
+    Story [Paragraph a]           -- ^ The story as it goes
+  | Aside (Maybe a) [Paragraph a] -- ^ Something else. Maybe a letter, a flashback, etc.
+  | Failing a
     deriving (Eq,Show)
 
+-- | A Paragraph is just a sequence of Component.
 type Paragraph a = [Component a]
 
+-- | A Component is either a narrative text, a character's line of dialogue or
+-- a character's inner thought.
+--
+-- We also embed an error Component in case we fail to parse a valid
+-- component. This way, we can resume parsing when we meet a new paragraph.
 data Component a =
-    Teller [Format a]    -- ^ A narrative description
-  | Dialogue (Reply a) a -- ^ A dialogue reply
-  | Thought (Reply a) a  -- ^ Inner dialogue of the character.
+    Teller [Format a]            -- ^ A narrative description
+  | Dialogue (Reply a) (Maybe a) -- ^ A dialogue reply
+  | Thought (Reply a) (Maybe a)  -- ^ Inner dialogue of the character
+  | IllFormed a                  -- ^ If none of the above matched, then output
+                                 --   what follows as-is, the parsing will
+                                 --   be resumed at the next paragraph
     deriving (Eq,Show)
 
--- | A character line of dialogue. A reply may contain a descriptive part, which
+-- | A character's line of dialogue. A reply may contain a descriptive part, which
 --   is not part of what the character actually says or thinks. We call the
 --   latter a "with say" reply untill someone gives use a better name for it.
 data Reply a =
@@ -27,32 +50,12 @@ data Reply a =
   | WithSay [Format a] [Format a] [Format a]
     deriving (Eq,Show)
 
--- | A formatted sequence of 'Collection's.
+-- | A nested formatted text
 data Format a =
-  Raw [Collection a]          -- ^ No particular emphasis is required on this sequence
-  | Emph [Collection a]       -- ^ Surrounded by @*@.
-  | StrongEmph [Collection a] -- ^ Surrounded by @**@.
-    deriving (Show,Eq)
-
-
--- | A sequence of 'Atom'.
---
---   @'Text' ['Word' "hi", 'Word' "miss", 'Punctuation' 'Exclamation']@
---
---   represents the string
---
---   @Hi miss!@
---
---   whereas
---
---   @'Quote' ['Word' "hi", 'Word' "miss", 'Punctuation' 'Exclamation']@
---
---   represents the string
---
---   @"Hi miss!"@
-data Collection a =
-    Text [Atom a] -- ^ A regular text composed of several 'Atom'.
-  | Quote [Atom a] -- ^ A sequence of 'Atom' surrounded by 'OpenQuote' and 'CloseQuote'.
+  Raw [Atom a]                -- ^ No particular emphasis is required on this sequence
+  | Emph [Format a]           -- ^ Surrounded by @*@.
+  | StrongEmph [Format a]     -- ^ Surrounded by @**@.
+  | Quote [Format a]
     deriving (Show,Eq)
 
 -- | An Atom is the atomic component of a Ogmarkup document. It can be either a
@@ -60,8 +63,8 @@ data Collection a =
 --
 --   Note that, by construction, 'OpenQuote' and 'CloseQuote' are not valid
 --   'Mark' values here.  Indeed, they are implicit with the 'Quote'
---   constructor. This choice allows to enforce that an opened quote needs to
---   be closed.
+--   constructor. This design allows the parser to enforce that an opened quote
+--   needs to be closed.
 data Atom a =
     Word a           -- ^ A wrapped string
   | Punctuation Mark -- ^ A punctuation mark
@@ -76,12 +79,13 @@ data Mark =
   | Colon            -- ^ The character @,@
   | Question         -- ^ The character @?@
   | Exclamation      -- ^ The character @!@
-  | OpenQuote        -- ^ The characters @"@ or @«@
-  | CloseQuote       -- ^ The characters @"@ @»@
+  | OpenQuote        -- ^ The character @"@
+  | CloseQuote       -- ^ The character @"@
   | Dash             -- ^ The character – or the sequence @--@
   | LongDash         -- ^ The character — or the sequence @---@
   | Comma            -- ^ The character @,@
   | Point            -- ^ The character @.@
   | Hyphen           -- ^ The character @-@
   | SuspensionPoints -- ^ Two or more @.@ or the character …
+  | Apostrophe       -- ^ The characters @'@ or @’@
     deriving (Show, Eq)
