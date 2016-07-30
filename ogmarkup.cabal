@@ -4,14 +4,14 @@ cabal-version: >=1.10
 build-type: Simple
 license: MIT
 license-file: LICENSE
-copyright: 2016 Iky
-maintainer: hi@ikyushii.eu
-homepage: http://gitlab.com/ogma/ogmarkup
-synopsis: Language Markup Parser for Ogma
+copyright: 2016 Ogma Project
+maintainer: contact@thomasletan.fr
+homepage: http://github.com/ogma-project/ogmarkup
+synopsis: A lightweight markup language for story writers
 description:
     Please see README.md
 category: Web
-author: Iky
+author: Thomas Letan, Laurent Georget
 
 source-repository head
     type: git
