@@ -28,6 +28,9 @@ spec = do
       it "should parse one quote" $
         Parser.parse Parser.format "" quoteStr `shouldParse` quoteFormat
 
+      it "should support french quotes" $ do
+        Parser.parse Parser.format "" frenchQuoteStr `shouldParse` frenchQuoteFormat
+
       it "should fail if the quote is ill-formed (no closing quote)" $
         shouldFail (Parser.parse Parser.format "" illQuoteStr)
 
@@ -63,6 +66,9 @@ exclamationAtom = Ast.Punctuation Ast.Exclamation
 
 quoteStr = "\"hi everyone.\""
 quoteFormat = Ast.Quote [Ast.Raw [hiAtom, Ast.Word "everyone", Ast.Punctuation Ast.Point]]
+
+frenchQuoteStr = "« hi everyone. »"
+frenchQuoteFormat = Ast.Quote [Ast.Raw [hiAtom, Ast.Word "everyone", Ast.Punctuation Ast.Point]]
 
 illQuoteStr = "\"hi"
 
