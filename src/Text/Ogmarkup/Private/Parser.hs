@@ -261,11 +261,10 @@ strongEmph = do char '+'
 -- | See 'Ast.Quote'.
 quote :: IsString a
       => OgmarkupParser (Ast.Format a)
-quote = do char '"'
-           blank
+quote = do openQuote
            enterQuote
            f <- format
-           fs <- manyTill format (char '"' >> blank)
+           fs <- manyTill format closeQuote
            leaveQuote
            return . Ast.Quote $ (f:fs)
 
