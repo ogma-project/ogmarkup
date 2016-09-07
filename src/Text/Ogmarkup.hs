@@ -11,6 +11,9 @@ The library is still in an early stage of development, hence the "experimental"
 stability. Be aware the exposed interface may change in future realase.
 -}
 
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Text.Ogmarkup
     (
       -- * Parse and Generate
@@ -34,6 +37,7 @@ module Text.Ogmarkup
 import           Data.String
 import           Data.List
 import           Data.Monoid
+import           Text.Megaparsec
 
 import qualified Text.Ogmarkup.Private.Config     as Conf
 import qualified Text.Ogmarkup.Private.Ast        as Ast
@@ -52,11 +56,11 @@ data Strategy =
 -- | From a String, parse and generate an output according to a generation configuration.
 --   The inner definitions of the parser and the generator imply that the output
 --   type has to be an instance of the 'IsString' and 'Monoid' classes.
-ogmarkup :: (IsString a, Monoid a, Conf.GenConf c a)
+ogmarkup :: (Stream a, Token a ~ Char, IsString b, Monoid b, Conf.GenConf c b)
          => Strategy       -- ^ Best-effort compilation strategy
          -> String         -- ^ The input string
          -> c              -- ^ The generator configuration
-         -> a
+         -> b
 ogmarkup be input conf = Gen.runGenerator (Gen.document (_ogmarkup be "" input [])) conf
   where
     _ogmarkup :: (IsString a, Monoid a)
