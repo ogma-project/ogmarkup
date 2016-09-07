@@ -11,6 +11,10 @@ The library is still in an early stage of development, hence the "experimental"
 stability. Be aware the exposed interface may change in future realase.
 -}
 
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Text.Ogmarkup
     (
       -- * Parse and Generate
@@ -32,8 +36,9 @@ module Text.Ogmarkup
     ) where
 
 import           Data.String
-import           Data.List
+import           Data.List hiding (uncons)
 import           Data.Monoid
+import           Text.Megaparsec
 
 import qualified Text.Ogmarkup.Private.Config     as Conf
 import qualified Text.Ogmarkup.Private.Ast        as Ast
@@ -52,23 +57,23 @@ data Strategy =
 -- | From a String, parse and generate an output according to a generation configuration.
 --   The inner definitions of the parser and the generator imply that the output
 --   type has to be an instance of the 'IsString' and 'Monoid' classes.
-ogmarkup :: (IsString a, Monoid a, Conf.GenConf c a)
+ogmarkup :: (Stream a, Token a ~ Char, IsString a, Eq a, Monoid a, IsString b, Monoid b, Conf.GenConf c b)
          => Strategy       -- ^ Best-effort compilation strategy
-         -> String         -- ^ The input string
+         -> a         -- ^ The input string
          -> c              -- ^ The generator configuration
-         -> a
+         -> b
 ogmarkup be input conf = Gen.runGenerator (Gen.document (_ogmarkup be "" input [])) conf
   where
-    _ogmarkup :: (IsString a, Monoid a)
+    _ogmarkup :: (Stream a, Token a ~ Char, IsString a, Eq a, Monoid a, IsString b, Monoid b)
               => Strategy -- best-effort compilation strategy
-              -> String   -- acc
-              -> String   -- input
-              -> Ast.Document a
-              -> Ast.Document a
+              -> [Char]   -- acc
+              -> a   -- input
+              -> Ast.Document b
+              -> Ast.Document b
 
     _ogmarkup _ "" "" ast = ast
 
-    _ogmarkup _ acc "" ast = ast `mappend` [Ast.Failing . fromString $ acc]
+    _ogmarkup _ acc "" ast = ast `mappend` [Ast.Failing $ fromString acc]
 
     _ogmarkup be acc input ast =
       case Parser.parse Parser.document "" input of
@@ -77,15 +82,24 @@ ogmarkup be input conf = Gen.runGenerator (Gen.document (_ogmarkup be "" input [
           then let (c, rst) = applyStrat be input
                in _ogmarkup be (acc `mappend` c) rst ast
           else if acc == ""
-               then _ogmarkup be [] input' (ast `mappend` ast')
-               else let f = Ast.Failing . fromString $ acc
-                    in _ogmarkup be [] input' (ast `mappend` (f:ast'))
+               then _ogmarkup be "" input' (ast `mappend` ast')
+               else let f = Ast.Failing $ fromString acc
+                    in _ogmarkup be mempty input' (ast `mappend` (f:ast'))
         Left err -> error $ show err
 
-    applyStrat :: Strategy
-               -> String
-               -> (String, String)
-
-    applyStrat _ [] = ([], [])
-    applyStrat ByLine input = break (== '\n') input
-    applyStrat ByChar (c:rst) = ([c], rst)
+    applyStrat :: (Monoid i, Stream i, Token i ~ Char, IsString i)
+               => Strategy
+               -> i
+               -> ([Char], i)
+    applyStrat strat input =
+      case uncons input of Nothing -> mempty
+                           Just (c, rst) -> case strat of ByChar -> ([c], rst)
+                                                          ByLine -> break (== '\n') input
+      where
+        break :: (Stream i, Token i ~ Char, IsString i, Monoid i)
+              => (Char -> Bool)
+              -> i
+              -> ([Char], i)
+        break f input = case uncons input of Nothing       -> ([], mempty)
+                                             Just (c, rst) -> if f c then ([], input)
+                                                                     else let (x, s) = break f rst in (c:x, s)
