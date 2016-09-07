@@ -21,6 +21,7 @@ library
     exposed-modules:
         Text.Ogmarkup
         Text.Ogmarkup.Private.Parser
+        Text.Ogmarkup.Private.Megaparser
         Text.Ogmarkup.Private.Ast
         Text.Ogmarkup.Private.Generator
         Text.Ogmarkup.Private.Typography
@@ -28,6 +29,7 @@ library
     build-depends:
         base >=4.7 && <5,
         parsec ==3.1.*,
+        megaparsec -any,
         mtl -any
     default-language: Haskell2010
     hs-source-dirs: src
@@ -38,9 +40,11 @@ test-suite ogmadown-test
     build-depends:
         base -any,
         hspec -any,
+        hspec-megaparsec,
         ogmarkup -any,
         parsec -any,
         shakespeare -any,
+        megaparsec -any,
         text -any
     default-language: Haskell2010
     hs-source-dirs: test
