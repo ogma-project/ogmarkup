@@ -50,6 +50,13 @@ spec = do
         parse' (Parser.reply '[' ']') "" dialogStartingWithSpaceStr `shouldParse` dialogStartingWithSpaceReply
         parse' (Parser.reply '[' ']') "" clauseStartingWithSpaceStr `shouldParse` clauseStartingWithSpaceReply
 
+    describe "section" $ do
+      it "should parse aside with class" $ do
+        parse' Parser.section "" asideWithClassStr `shouldParse` asideWithClassAst
+
+      it "should parse aside without class" $ do
+        parse' Parser.section "" asideWithoutClassStr `shouldParse` asideWithoutClassAst
+
     describe "ill-formed paragraphs" $ do
       it "ill-formed components should be accepted as-is" $ do
         parse' Parser.component "" illQuoteStr  `shouldParse` Ast.IllFormed illQuoteStr
@@ -107,5 +114,11 @@ secondParagraphIllFormedPartialCompilation =
 
 storyStr = hiStr
 storyAst = Ast.Story [ [ Ast.Teller [ Ast.Raw [ hiAtom ] ] ] ]
+
+asideWithClassStr = "____class_____\n\n" ++ hiStr ++ "\n_______"
+asideWithClassAst = Ast.Aside (Just "class") [ [ Ast.Teller [ Ast.Raw [ hiAtom ] ] ] ]
+
+asideWithoutClassStr = "_________\n\n" ++ hiStr ++ "\n_______"
+asideWithoutClassAst = Ast.Aside Nothing [ [ Ast.Teller [ Ast.Raw [ hiAtom ] ] ] ]
 
 asideIllFormed = "_______letter______\n\n_______letter______\n\nTest.\n\n____________"
