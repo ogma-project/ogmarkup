@@ -33,7 +33,6 @@ module Text.Ogmarkup
 
 import           Data.String
 import           Data.List
-import           Text.ParserCombinators.Parsec
 import           Data.Monoid
 
 import qualified Text.Ogmarkup.Private.Config     as Conf
