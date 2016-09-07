@@ -275,17 +275,13 @@ atom = (mark <|> longword <|> word) <* blank
 word :: (Stream a, Token a ~ Char, IsString b)
      => OgmarkupParser a (Ast.Atom b)
 word = do notFollowedBy endOfWord
-
           str <- manyTill anyChar (lookAhead $ try endOfWord)
-
           return $ Ast.Word (fromString str)
   where
-    specChar = "\"«»`+*[]<>|_\'’"
-
     endOfWord :: (Stream a, Token a ~ Char)
               => OgmarkupParser a ()
-    endOfWord = eof <|> skip space <|> skip (oneOf specChar) <|> skip mark
-
+    endOfWord = eof <|> (skip spaceChar) <|> (skip $ oneOf specChar) <|> (skip mark)
+    specChar = "\"«»`+*[]<>|_\'’"
 
 
 -- | Wrap a raw string surrounded by @`@ inside a 'Ast.Word'.
@@ -365,7 +361,7 @@ endOfParagraph = try betweenTwoSections
   where
     betweenTwoSections :: (Stream a, Token a ~ Char)
                        => OgmarkupParser a ()
-    betweenTwoSections = do count 2 $ manyTill space (eof <|> skip (char '\n'))
+    betweenTwoSections = do count 2 $ manyTill spaceChar (eof <|> skip (char '\n'))
                             space
 
 
@@ -374,9 +370,11 @@ endOfParagraph = try betweenTwoSections
 --   one blank line. The latter marks the end of the current paragraph.
 blank :: (Stream a, Token a ~ Char)
       => OgmarkupParser a ()
-blank = void $ notFollowedBy endOfParagraph >> space
+blank = do skip $ optional (notFollowedBy endOfParagraph >> space)
 
 
 -- | @skip p@ parses @p@ and skips the result.
-skip :: OgmarkupParser a b -> OgmarkupParser a ()
-skip = void
+skip :: (Stream a)
+     => OgmarkupParser a b
+     -> OgmarkupParser a ()
+skip =  (>> return ())

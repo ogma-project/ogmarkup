@@ -23,7 +23,6 @@ spec = do
     describe "atom" $ do
       it "should not parse an empty string" $ parse' Parser.atom "" `shouldFailOn` ""
 
-{-
       it "should parse one word" $ parse' Parser.atom "" hiStr `shouldParse` hiAtom
 
       it "should parse one punctuation mark" $
@@ -110,4 +109,3 @@ storyStr = hiStr
 storyAst = Ast.Story [ [ Ast.Teller [ Ast.Raw [ hiAtom ] ] ] ]
 
 asideIllFormed = "_______letter______\n\n_______letter______\n\nTest.\n\n____________"
--}
