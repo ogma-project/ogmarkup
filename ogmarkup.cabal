@@ -1,5 +1,5 @@
 name: ogmarkup
-version: 2.2
+version: 2.3
 cabal-version: >=1.10
 build-type: Simple
 license: MIT
