@@ -11,13 +11,13 @@ Please consider that only 'document' should be used outside this
 module.
 -}
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Text.Ogmarkup.Private.Parser where
 
-import           Control.Monad
+import           Text.Megaparsec
+import           Control.Monad.State
 import           Data.String
-import Text.ParserCombinators.Parsec hiding (parse)
 
 import qualified Text.Ogmarkup.Private.Ast     as Ast
 
@@ -31,54 +31,63 @@ data ParserState = ParserState { -- | Already parsing text with emphasis
                                , parseWithinQuote     :: Bool
                                }
 
+-- | An ogmarkup parser processes 'Char' tokens and carries a 'ParserState'.
+type OgmarkupParser a = StateT ParserState (Parsec Dec a)
+
 -- | Update the 'ParserState' to guard against nested emphasis.
-enterEmph :: OgmarkupParser ()
-enterEmph = do st <- getState
+enterEmph :: Stream a
+          => OgmarkupParser a ()
+enterEmph = do st <- get
                if parseWithEmph st
                  then fail "guard against nested emphasis"
-                 else do setState st { parseWithEmph = True }
+                 else do put st { parseWithEmph = True }
                          return ()
 
 -- | Update the 'ParserState' to be able to parse input with emphasis
 -- again.
-leaveEmph :: OgmarkupParser ()
-leaveEmph = do st <- getState
+leaveEmph :: Stream a
+          => OgmarkupParser a ()
+leaveEmph = do st <- get
                if parseWithEmph st
-                 then do setState st { parseWithEmph = False }
+                 then do put st { parseWithEmph = False }
                          return ()
                  else fail "cannot leave emphasis when you did not enter"
 
 -- | Update the 'ParserState' to guard against nested strong emphasis.
-enterStrongEmph :: OgmarkupParser ()
-enterStrongEmph = do st <- getState
+enterStrongEmph :: Stream a
+                => OgmarkupParser a ()
+enterStrongEmph = do st <- get
                      if parseWithStrongEmph st
                        then fail "guard against nested strong emphasis"
-                       else do setState st { parseWithStrongEmph = True }
+                       else do put st { parseWithStrongEmph = True }
                                return ()
 
 -- | Update the 'ParserState' to be able to parse input with strong emphasis
 -- again.
-leaveStrongEmph :: OgmarkupParser ()
-leaveStrongEmph = do st <- getState
+leaveStrongEmph :: Stream a
+                => OgmarkupParser a ()
+leaveStrongEmph = do st <- get
                      if parseWithStrongEmph st
-                       then do setState st { parseWithStrongEmph = False }
+                       then do put st { parseWithStrongEmph = False }
                                return ()
                        else fail "cannot leave strong emphasis when you did not enter"
 
 -- | Update the 'ParserState' to guard against nested quoted inputs.
-enterQuote :: OgmarkupParser ()
-enterQuote = do st <- getState
+enterQuote :: Stream a
+           => OgmarkupParser a ()
+enterQuote = do st <- get
                 if parseWithinQuote st
                   then fail "guard against nested quotes"
-                  else do setState st { parseWithinQuote = True }
+                  else do put st { parseWithinQuote = True }
                           return ()
 
 -- | Update the 'ParserState' to be able to parse an input
 -- surrounded by quotes again.
-leaveQuote :: OgmarkupParser ()
-leaveQuote = do st <- getState
+leaveQuote :: Stream a
+           => OgmarkupParser a ()
+leaveQuote = do st <- get
                 if parseWithinQuote st
-                  then do setState st { parseWithinQuote = False }
+                  then do put st { parseWithinQuote = False }
                           return ()
                   else fail "cannot leave quote when you did not enter"
 
@@ -87,133 +96,134 @@ leaveQuote = do st <- getState
 initParserState :: ParserState
 initParserState = ParserState False False False
 
--- | An ogmarkup parser processes 'Char' tokens and carries a 'ParserState'.
-type OgmarkupParser = GenParser Char ParserState
-
--- | A wrapper around the 'runParser' function of Parsec. It uses
+-- | A wrapper around the 'runParser' function of Megaparsec. It uses
 -- 'initParserState' as an initial state.
-parse :: OgmarkupParser a -> String -> String -> Either ParseError a
-parse ogma = runParser ogma initParserState
+parse :: (Stream a, Token a ~ Char)
+      => OgmarkupParser a b
+      -> String
+      -> a
+      -> Either (ParseError (Token a) Dec) b
+parse ogma file = runParser (evalStateT ogma initParserState) file
 
 -- | Try its best to parse an ogmarkup document. When it encounters an
 --   error, it returns an Ast and the remaining input.
 --
 --   See 'Ast.Document'.
-document :: IsString a
-         => OgmarkupParser (Ast.Document a, String)
-document = do spaces
+document :: (Stream a, Token a ~ Char, IsString b)
+         => OgmarkupParser a (Ast.Document b, a)
+document = do space
               sects <- many (try section)
               input <- getInput
 
               return (sects, input)
 
 -- | See 'Ast.Section'.
-section :: IsString a
-           => OgmarkupParser (Ast.Section a)
+section :: (Stream a, Token a ~ Char, IsString b)
+           => OgmarkupParser a (Ast.Section b)
 section = aside <|> story
 
 -- | See 'Ast.Aside'.
-aside :: IsString a
-         => OgmarkupParser (Ast.Section a)
+aside :: (Stream a, Token a ~ Char, IsString b)
+         => OgmarkupParser a (Ast.Section b)
 aside = do asideSeparator
-           cls <- optionMaybe asideClass
-           spaces
-           ps <- many1 (paragraph <* spaces)
+           cls <- optional asideClass
+           space
+           ps <- some (paragraph <* space)
            asideSeparator
            manyTill space (skip (char '\n') <|> eof)
-           spaces
+           space
 
            return $ Ast.Aside cls ps
   where
-    asideClass :: IsString a
-               => OgmarkupParser a
-    asideClass = do a <- many1 letter
+    asideClass :: (Stream a, Token a ~ Char, IsString b)
+               => OgmarkupParser a b
+    asideClass = do cls <- some letterChar
                     asideSeparator
 
-                    return $ fromString a
+                    return $ fromString cls
 
 -- | See 'Ast.Story'.
-story :: IsString a
-      => OgmarkupParser (Ast.Section a)
-story = Ast.Story `fmap` many1 (paragraph <* spaces)
+story :: (Stream a, Token a ~ Char, IsString b)
+      => OgmarkupParser a (Ast.Section b)
+story = Ast.Story `fmap` some (paragraph <* space)
 
 -- | See 'Ast.Paragraph'.
-paragraph :: IsString a
-          => OgmarkupParser (Ast.Paragraph a)
-paragraph = many1 component <* blank
+paragraph :: (Stream a, Token a ~ Char, IsString b)
+          => OgmarkupParser a (Ast.Paragraph b)
+paragraph = some component <* blank
 
 -- | See 'Ast.Component'.
-component :: IsString a
-          => OgmarkupParser (Ast.Component a)
+component :: (Stream a, Token a ~ Char, IsString b)
+          => OgmarkupParser a (Ast.Component b)
 component = try (dialogue <|> thought <|> teller) <|> illformed
 
 -- | See 'Ast.IllFormed'.
-illformed :: IsString a
-          => OgmarkupParser (Ast.Component a)
+illformed :: (Stream a, Token a ~ Char, IsString b)
+          => OgmarkupParser a (Ast.Component b)
 illformed = Ast.IllFormed `fmap` restOfParagraph
 
 -- | Parse the rest of the current paragraph with no regards for the
 -- ogmarkup syntax. This Parser is used when the document is ill-formed, to
 -- find a new point of synchronization.
-restOfParagraph :: IsString a
-                => OgmarkupParser a
-restOfParagraph = do lookAhead anyToken
+restOfParagraph :: (Stream a, Token a ~ Char, IsString b)
+                => OgmarkupParser a b
+restOfParagraph = do lookAhead anyChar
                      notFollowedBy endOfParagraph
-                     str <- manyTill anyToken (lookAhead $ try endOfParagraph)
+                     str <- manyTill anyChar (lookAhead $ try endOfParagraph)
                      return $ fromString str
 
 -- | See 'Ast.Teller'.
-teller :: IsString a
-       => OgmarkupParser (Ast.Component a)
-teller = Ast.Teller `fmap` many1 format
+teller :: (Stream a, Token a ~ Char, IsString b)
+       => OgmarkupParser a (Ast.Component b)
+teller = Ast.Teller `fmap` some format
 
 -- | See 'Ast.Dialogue'.
-dialogue :: IsString a
-         => OgmarkupParser (Ast.Component a)
+dialogue :: (Stream a, Token a ~ Char, IsString b)
+         => OgmarkupParser a (Ast.Component b)
 dialogue = talk '[' ']' Ast.Dialogue
 
 -- | See 'Ast.Thought'.
-thought :: IsString a
-        => OgmarkupParser (Ast.Component a)
+thought :: (Stream a, Token a ~ Char, IsString b)
+        => OgmarkupParser a (Ast.Component b)
 thought = talk '<' '>' Ast.Thought
 
 -- | @'talk' c c' constr@ wraps a reply surrounded by @c@ and @c'@ inside
 --   @constr@ (either 'Ast.Dialogue' or 'Ast.Thought').
-talk :: IsString a
+talk :: (Stream a, Token a ~ Char, IsString b)
      => Char -- ^ A character to mark the begining of a reply
      -> Char -- ^ A character to mark the end of a reply
-     -> (Ast.Reply a -> Maybe a -> Ast.Component a) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation
-     -> OgmarkupParser (Ast.Component a)
+     -> (Ast.Reply b -> Maybe b -> Ast.Component b) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation
+     -> OgmarkupParser a (Ast.Component b)
 talk c c' constructor = do
   rep <- reply c c'
-  auth <- optionMaybe characterName
+  auth <- optional characterName
   blank
 
   return $ constructor rep auth
 
 -- | Parse the name of the character which speaks or thinks. According to
 -- the ogmarkup syntax, it is surrounded by parentheses.
-characterName :: IsString a
-           => OgmarkupParser a
+characterName :: (Stream a, Token a ~ Char, IsString b)
+           => OgmarkupParser a b
 characterName = do
   char '('
   notFollowedBy (char ')') <?> "Empty character names are not allowed"
-  auth <- manyTill anyToken (char ')') <?> "Missing closing )"
+  auth <- manyTill anyChar (char ')') <?> "Missing closing )"
 
   return $ fromString auth
 
 -- | 'reply' parses a 'Ast.Reply'.
-reply :: IsString a
+reply :: (Stream a, Token a ~ Char, IsString b)
       => Char
       -> Char
-      -> OgmarkupParser (Ast.Reply a)
+      -> OgmarkupParser a (Ast.Reply b)
 reply c c' = do char c
                 blank
-                p1 <- many1 format
+                p1 <- some format
                 x <- oneOf ['|', c']
 
                 case x of '|' -> do blank
-                                    ws <- many1 format
+                                    ws <- some format
                                     char '|' <?> "Missing | to close the with say"
                                     blank
                                     p2 <- many format
@@ -223,8 +233,8 @@ reply c c' = do char c
                           _ -> return $ Ast.Simple p1
 
 -- | See 'Ast.Format'.
-format :: IsString a
-       => OgmarkupParser (Ast.Format a)
+format :: (Stream a, Token a ~ Char, IsString b)
+       => OgmarkupParser a (Ast.Format b)
 format = choice [ raw
                 , emph
                 , strongEmph
@@ -232,13 +242,13 @@ format = choice [ raw
                 ]
 
 -- | See 'Ast.Raw'.
-raw :: IsString a
-    => OgmarkupParser (Ast.Format a)
-raw = Ast.Raw `fmap` many1 atom 
+raw :: (Stream a, Token a ~ Char, IsString b)
+    => OgmarkupParser a (Ast.Format b)
+raw = Ast.Raw `fmap` some atom
 
 -- | See 'Ast.Emph'.
-emph :: IsString a
-     => OgmarkupParser (Ast.Format a)
+emph :: (Stream a, Token a ~ Char, IsString b)
+     => OgmarkupParser a (Ast.Format b)
 emph = do char '*'
           blank
           enterEmph
@@ -248,8 +258,8 @@ emph = do char '*'
           return . Ast.Emph $ (f:fs)
 
 -- | See 'Ast.StrongEmph'.
-strongEmph :: IsString a
-           => OgmarkupParser (Ast.Format a)
+strongEmph :: (Stream a, Token a ~ Char, IsString b)
+           => OgmarkupParser a (Ast.Format b)
 strongEmph = do char '+'
                 blank
                 enterStrongEmph
@@ -259,36 +269,33 @@ strongEmph = do char '+'
                 return . Ast.StrongEmph $ (f:fs)
 
 -- | See 'Ast.Quote'.
-quote :: IsString a
-      => OgmarkupParser (Ast.Format a)
-quote = do char '"'
-           blank
+quote :: (Stream a, Token a ~ Char, IsString b)
+      => OgmarkupParser a (Ast.Format b)
+quote = do openQuote
            enterQuote
            f <- format
-           fs <- manyTill format (char '"' >> blank)
+           fs <- manyTill format closeQuote
            leaveQuote
            return . Ast.Quote $ (f:fs)
 
 -- | See 'Ast.Atom'.
-atom :: IsString a
-     => OgmarkupParser (Ast.Atom a)
+atom :: (Stream a, Token a ~ Char, IsString b)
+     => OgmarkupParser a (Ast.Atom b)
 atom = (mark <|> longword <|> word) <* blank
 
 -- | See 'Ast.Word'. This parser does not consume the following spaces, so
 --   the caller needs to take care of it.
-word :: IsString a
-     => OgmarkupParser (Ast.Atom a)
-word = do lookAhead anyToken -- not the end of the parser
-          notFollowedBy endOfWord
-
-          str <- manyTill anyToken (lookAhead $ try endOfWord)
-
+word :: (Stream a, Token a ~ Char, IsString b)
+     => OgmarkupParser a (Ast.Atom b)
+word = do notFollowedBy endOfWord
+          str <- manyTill anyChar (lookAhead $ try endOfWord)
           return $ Ast.Word (fromString str)
   where
+    endOfWord :: (Stream a, Token a ~ Char)
+              => OgmarkupParser a ()
+    endOfWord = eof <|> (skip spaceChar) <|> (skip $ oneOf specChar) <|> (skip mark)
     specChar = "\"«»`+*[]<>|_\'’"
 
-    endOfWord :: OgmarkupParser ()
-    endOfWord =     eof <|> skip space <|> skip (oneOf specChar) <|> skip mark
 
 -- | Wrap a raw string surrounded by @`@ inside a 'Ast.Word'.
 --
@@ -297,16 +304,17 @@ word = do lookAhead anyToken -- not the end of the parser
 --
 --   Therefore, @`@ can be used to insert normally reserved symbol
 --   inside a generated document.
-longword :: IsString a
-         => OgmarkupParser (Ast.Atom a)
+longword :: (Stream a, Token a ~ Char, IsString b)
+         => OgmarkupParser a (Ast.Atom b)
 longword = do char '`'
               notFollowedBy (char '`') <?> "empty raw string are not accepted"
-              str <- manyTill anyToken (char '`')
+              str <- manyTill anyChar (char '`')
               return $ Ast.Word (fromString str)
 
 -- | See 'Ast.Punctuation'. Be aware that 'mark' does not parse the quotes
 --   because they are processed 'quote'.
-mark :: OgmarkupParser (Ast.Atom a)
+mark :: (Stream a, Token a ~ Char)
+     => OgmarkupParser a (Ast.Atom b)
 mark = Ast.Punctuation `fmap` (semicolon
         <|> colon
         <|> question
@@ -335,42 +343,51 @@ mark = Ast.Punctuation `fmap` (semicolon
 
 -- | See 'Ast.OpenQuote'. This parser consumes the following blank (see 'blank')
 --   and skip the result.
-openQuote :: OgmarkupParser ()
+openQuote :: (Stream a, Token a ~ Char)
+          => OgmarkupParser a ()
 openQuote = do char '«' <|> char '"'
                blank
 
 -- | See 'Ast.CloseQuote'. This parser consumes the following blank (see 'blank')
 --   and skip the result.
-closeQuote :: OgmarkupParser ()
+closeQuote :: (Stream a, Token a ~ Char)
+           => OgmarkupParser a ()
 closeQuote = do char '»' <|> char '"'
                 blank
 
 -- | An aside section (see 'Ast.Aside') is a particular region
 --   surrounded by two lines of underscores (at least three).
 --   This parser consumes one such line.
-asideSeparator :: OgmarkupParser ()
+asideSeparator :: (Stream a, Token a ~ Char)
+               => OgmarkupParser a ()
 asideSeparator = do string "__"
-                    many1 (char '_')
-
+                    some (char '_')
                     return ()
 
 -- | The end of a paragraph is the end of the document or two blank lines
 -- or an aside separator, that is a line of underscores.
-endOfParagraph :: OgmarkupParser ()
+endOfParagraph :: (Stream a, Token a ~ Char)
+               => OgmarkupParser a ()
 endOfParagraph = try betweenTwoSections
                  <|> asideSeparator
                  <|> eof
   where
-    betweenTwoSections :: OgmarkupParser ()
-    betweenTwoSections = do count 2 $ manyTill space (eof <|> skip (char '\n'))
-                            spaces
+    betweenTwoSections :: (Stream a, Token a ~ Char)
+                       => OgmarkupParser a ()
+    betweenTwoSections = do count 2 $ manyTill spaceChar (eof <|> skip (char '\n'))
+                            space
+
 
 -- | This parser consumes all the white spaces until it finds either an aside
 --   surrounding marker (see 'Ast.Aside'), the end of the document or
 --   one blank line. The latter marks the end of the current paragraph.
-blank :: OgmarkupParser ()
-blank = optional (notFollowedBy endOfParagraph >> spaces)
+blank :: (Stream a, Token a ~ Char)
+      => OgmarkupParser a ()
+blank = do skip $ optional (notFollowedBy endOfParagraph >> space)
+
 
 -- | @skip p@ parses @p@ and skips the result.
-skip :: OgmarkupParser a -> OgmarkupParser ()
-skip = void
+skip :: (Stream a)
+     => OgmarkupParser a b
+     -> OgmarkupParser a ()
+skip =  (>> return ())
