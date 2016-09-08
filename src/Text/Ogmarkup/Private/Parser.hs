@@ -110,13 +110,21 @@ parse ogma file = runParser (evalStateT ogma initParserState) file
 --
 --   See 'Ast.Document'.
 document :: (Stream a, Token a ~ Char, IsString b)
-         => OgmarkupParser a (Ast.Document b, a)
-document = do space
-              sects <- many (try section)
-              input <- getInput
+          => OgmarkupParser a (Ast.Document b)
+document = doc []
+  where doc :: (Stream a, Token a ~ Char, IsString b)
+             => Ast.Document b
+             -> OgmarkupParser a (Ast.Document b)
+        doc ast = do space
+                     sects <- many (try section)
+                     let ast' = ast `mappend` sects
+                     (eof >> return ast') <|> (recover ast' >>= doc)
 
-              return (sects, input)
-
+        recover :: (Stream a, Token a ~ Char, IsString b)
+                => Ast.Document b
+                -> OgmarkupParser a (Ast.Document b)
+        recover ast = do failure <- someTill anyChar (char '\n')
+                         return $ ast `mappend` [Ast.Failing $ fromString failure]
 -- | See 'Ast.Section'.
 section :: (Stream a, Token a ~ Char, IsString b)
            => OgmarkupParser a (Ast.Section b)
