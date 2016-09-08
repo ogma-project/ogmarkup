@@ -67,7 +67,16 @@ spec = do
 
     describe "document" $ do
       it "should try its best to compile an ill-formed document" $ do
-        parse' Parser.document "" (storyStr ++ "\n\n" ++ asideIllFormed) `shouldParse` ([storyAst], asideIllFormed)
+        parse' Parser.document "" (storyStr ++ "\n\n" ++ asideIllFormed) `shouldParse`
+           [ storyAst
+           , Ast.Failing "_______letter______"
+           , Ast.Aside (Just "letter") [ [ Ast.Teller [ Ast.Raw [ Ast.Word "Test"
+                                                                , Ast.Punctuation Ast.Point
+                                                                ]
+                                                      ]
+                                         ]
+                                       ]
+           ]
 
 hiStr = "hi"
 hiAtom = Ast.Word "hi"

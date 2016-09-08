@@ -18,7 +18,6 @@ stability. Be aware the exposed interface may change in future realase.
 module Text.Ogmarkup
     (
       -- * Parse and Generate
-      Strategy (..),
       ogmarkup,
 
       -- * Generation Configuration
@@ -46,60 +45,13 @@ import qualified Text.Ogmarkup.Private.Generator  as Gen
 import qualified Text.Ogmarkup.Private.Parser     as Parser
 import qualified Text.Ogmarkup.Private.Typography as Typo
 
--- | With the best-effort compilation feature of ogmarkup, when the parser
---   encounters an error, it can apply two different strategies with the
---   remaining input to find a new synchronization point. It can search
---   character by character or line by line.
-data Strategy =
-    ByLine
-  | ByChar
-
 -- | From a String, parse and generate an output according to a generation configuration.
 --   The inner definitions of the parser and the generator imply that the output
 --   type has to be an instance of the 'IsString' and 'Monoid' classes.
 ogmarkup :: (Stream a, Token a ~ Char, IsString a, Eq a, Monoid a, IsString b, Monoid b, Conf.GenConf c b)
-         => Strategy       -- ^ Best-effort compilation strategy
-         -> a         -- ^ The input string
-         -> c              -- ^ The generator configuration
+         => a         -- ^ The input string
+         -> c         -- ^ The generator configuration
          -> b
-ogmarkup be input conf = Gen.runGenerator (Gen.document (_ogmarkup be "" input [])) conf
-  where
-    _ogmarkup :: (Stream a, Token a ~ Char, IsString a, Eq a, Monoid a, IsString b, Monoid b)
-              => Strategy -- best-effort compilation strategy
-              -> [Char]   -- acc
-              -> a   -- input
-              -> Ast.Document b
-              -> Ast.Document b
-
-    _ogmarkup _ "" "" ast = ast
-
-    _ogmarkup _ acc "" ast = ast `mappend` [Ast.Failing $ fromString acc]
-
-    _ogmarkup be acc input ast =
-      case Parser.parse Parser.document "" input of
-        Right (ast', input') ->
-          if input == input'  -- nothing has been parsed
-          then let (c, rst) = applyStrat be input
-               in _ogmarkup be (acc `mappend` c) rst ast
-          else if acc == ""
-               then _ogmarkup be "" input' (ast `mappend` ast')
-               else let f = Ast.Failing $ fromString acc
-                    in _ogmarkup be mempty input' (ast `mappend` (f:ast'))
-        Left err -> error $ show err
-
-    applyStrat :: (Monoid i, Stream i, Token i ~ Char, IsString i)
-               => Strategy
-               -> i
-               -> ([Char], i)
-    applyStrat strat input =
-      case uncons input of Nothing -> mempty
-                           Just (c, rst) -> case strat of ByChar -> ([c], rst)
-                                                          ByLine -> break (== '\n') input
-      where
-        break :: (Stream i, Token i ~ Char, IsString i, Monoid i)
-              => (Char -> Bool)
-              -> i
-              -> ([Char], i)
-        break f input = case uncons input of Nothing       -> ([], mempty)
-                                             Just (c, rst) -> if f c then ([], input)
-                                                                     else let (x, s) = break f rst in (c:x, s)
+ogmarkup input conf = case Parser.parse Parser.document "" input of
+                        Right ast -> Gen.runGenerator (Gen.document ast) conf
+                        Left _    -> error "failed to parse an ogmarkup document even with best effort"
