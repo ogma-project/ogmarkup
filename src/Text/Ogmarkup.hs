@@ -49,10 +49,9 @@ import qualified Text.Ogmarkup.Private.Typography as Typo
 --   The inner definitions of the parser and the generator imply that the output
 --   type has to be an instance of the 'IsString' and 'Monoid' classes.
 ogmarkup :: (Stream a, Token a ~ Char, IsString a, Eq a, Monoid a, IsString b, Monoid b, Conf.GenConf c b)
-         => Strategy       -- ^ Best-effort compilation strategy
-         -> a         -- ^ The input string
-         -> c              -- ^ The generator configuration
+         => a         -- ^ The input string
+         -> c         -- ^ The generator configuration
          -> b
-ogmarkup be input conf = case Parser.parse Parser.document "" input of
-                           Right ast -> Gen.runGenerator (Gen.document ast) conf
-                           Left _    -> error "failed to parse an ogmarkup document even with best effort"
+ogmarkup input conf = case Parser.parse Parser.document "" input of
+                        Right ast -> Gen.runGenerator (Gen.document ast) conf
+                        Left _    -> error "failed to parse an ogmarkup document even with best effort"
