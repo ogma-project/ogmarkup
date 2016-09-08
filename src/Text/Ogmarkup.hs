@@ -18,7 +18,6 @@ stability. Be aware the exposed interface may change in future realase.
 module Text.Ogmarkup
     (
       -- * Parse and Generate
-      Strategy (..),
       ogmarkup,
 
       -- * Generation Configuration
@@ -45,14 +44,6 @@ import qualified Text.Ogmarkup.Private.Ast        as Ast
 import qualified Text.Ogmarkup.Private.Generator  as Gen
 import qualified Text.Ogmarkup.Private.Parser     as Parser
 import qualified Text.Ogmarkup.Private.Typography as Typo
-
--- | With the best-effort compilation feature of ogmarkup, when the parser
---   encounters an error, it can apply two different strategies with the
---   remaining input to find a new synchronization point. It can search
---   character by character or line by line.
-data Strategy =
-    ByLine
-  | ByChar
 
 -- | From a String, parse and generate an output according to a generation configuration.
 --   The inner definitions of the parser and the generator imply that the output
