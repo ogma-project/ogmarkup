@@ -1,5 +1,7 @@
 flags: {}
 extra-package-dbs: []
+extra-deps:
+- file-embed-poly-0.1.0
 packages:
 - '.'
 resolver: nightly-2016-07-29
