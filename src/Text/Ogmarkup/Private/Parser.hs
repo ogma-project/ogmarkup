@@ -215,8 +215,8 @@ characterName :: (Stream a, Token a ~ Char, IsString b)
            => OgmarkupParser a b
 characterName = do
   char '('
-  notFollowedBy (char ')') <?> "Empty character names are not allowed"
-  auth <- manyTill anyChar (char ')') <?> "Missing closing )"
+  notFollowedBy (char ')')
+  auth <- manyTill anyChar (char ')')
 
   return $ fromString auth
 
@@ -232,7 +232,7 @@ reply c c' = do char c
 
                 case x of '|' -> do blank
                                     ws <- some format
-                                    char '|' <?> "Missing | to close the with say"
+                                    char '|'
                                     blank
                                     p2 <- many format
                                     char c'
@@ -301,8 +301,8 @@ word = do notFollowedBy endOfWord
   where
     endOfWord :: (Stream a, Token a ~ Char)
               => OgmarkupParser a ()
-    endOfWord = eof <|> (skip spaceChar) <|> (skip $ oneOf specChar) <|> (skip mark)
-    specChar = "\"«»`+*[]<>|_\'’"
+    endOfWord = eof <|> (skip spaceChar) <|> (skip $ oneOf specChar)
+    specChar = "\"«»`+*[]<>|_\'’.,;-–—!?:"
 
 
 -- | Wrap a raw string surrounded by @`@ inside a 'Ast.Word'.
@@ -315,7 +315,7 @@ word = do notFollowedBy endOfWord
 longword :: (Stream a, Token a ~ Char, IsString b)
          => OgmarkupParser a (Ast.Atom b)
 longword = do char '`'
-              notFollowedBy (char '`') <?> "empty raw string are not accepted"
+              notFollowedBy (char '`')
               str <- manyTill anyChar (char '`')
               return $ Ast.Word (fromString str)
 
