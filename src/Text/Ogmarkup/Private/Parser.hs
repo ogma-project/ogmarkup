@@ -289,7 +289,7 @@ quote = do openQuote
 -- | See 'Ast.Atom'.
 atom :: (Stream a, Token a ~ Char, IsString b)
      => OgmarkupParser a (Ast.Atom b)
-atom = (mark <|> longword <|> word) <* blank
+atom = (word <|> mark <|> longword) <* blank
 
 -- | See 'Ast.Word'. This parser does not consume the following spaces, so
 --   the caller needs to take care of it.
