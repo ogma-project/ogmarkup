@@ -2,6 +2,7 @@ flags: {}
 extra-package-dbs: []
 extra-deps:
 - file-embed-poly-0.1.0
+- megaparsec-6.1.1
 packages:
 - '.'
 resolver: lts-9.0

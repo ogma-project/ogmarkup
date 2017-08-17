@@ -11,13 +11,17 @@ Please consider that only 'document' should be used outside this
 module.
 -}
 
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts  #-}
 
 module Text.Ogmarkup.Private.Parser where
 
 import           Text.Megaparsec
+import           Text.Megaparsec.Char
 import           Control.Monad.State
 import           Data.String
+import           Data.Void            (Void)
 
 import qualified Text.Ogmarkup.Private.Ast     as Ast
 
@@ -32,7 +36,7 @@ data ParserState = ParserState { -- | Already parsing text with emphasis
                                }
 
 -- | An ogmarkup parser processes 'Char' tokens and carries a 'ParserState'.
-type OgmarkupParser a = StateT ParserState (Parsec Dec a)
+type OgmarkupParser a = StateT ParserState (Parsec Void a)
 
 -- | Update the 'ParserState' to guard against nested emphasis.
 enterEmph :: Stream a
@@ -98,21 +102,21 @@ initParserState = ParserState False False False
 
 -- | A wrapper around the 'runParser' function of Megaparsec. It uses
 -- 'initParserState' as an initial state.
-parse :: (Stream a, Token a ~ Char)
+parse :: (Stream a, Token a ~ Char, IsString (Tokens a))
       => OgmarkupParser a b
       -> String
       -> a
-      -> Either (ParseError (Token a) Dec) b
+      -> Either (ParseError (Token a) Void) b
 parse ogma file = runParser (evalStateT ogma initParserState) file
 
 -- | Try its best to parse an ogmarkup document. When it encounters an
 --   error, it returns an Ast and the remaining input.
 --
 --   See 'Ast.Document'.
-document :: (Stream a, Token a ~ Char, IsString b)
+document :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
           => OgmarkupParser a (Ast.Document b)
 document = doc []
-  where doc :: (Stream a, Token a ~ Char, IsString b)
+  where doc :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
              => Ast.Document b
              -> OgmarkupParser a (Ast.Document b)
         doc ast = do space
@@ -120,18 +124,18 @@ document = doc []
                      let ast' = ast `mappend` sects
                      (eof >> return ast') <|> (recover ast' >>= doc)
 
-        recover :: (Stream a, Token a ~ Char, IsString b)
+        recover :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
                 => Ast.Document b
                 -> OgmarkupParser a (Ast.Document b)
         recover ast = do failure <- someTill anyChar (char '\n')
                          return $ ast `mappend` [Ast.Failing $ fromString failure]
 -- | See 'Ast.Section'.
-section :: (Stream a, Token a ~ Char, IsString b)
+section :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
            => OgmarkupParser a (Ast.Section b)
 section = aside <|> story
 
 -- | See 'Ast.Aside'.
-aside :: (Stream a, Token a ~ Char, IsString b)
+aside :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
          => OgmarkupParser a (Ast.Section b)
 aside = do asideSeparator
            cls <- optional asideClass
@@ -143,7 +147,7 @@ aside = do asideSeparator
 
            return $ Ast.Aside cls ps
   where
-    asideClass :: (Stream a, Token a ~ Char, IsString b)
+    asideClass :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
                => OgmarkupParser a b
     asideClass = do cls <- some letterChar
                     asideSeparator
@@ -151,29 +155,29 @@ aside = do asideSeparator
                     return $ fromString cls
 
 -- | See 'Ast.Story'.
-story :: (Stream a, Token a ~ Char, IsString b)
+story :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
       => OgmarkupParser a (Ast.Section b)
 story = Ast.Story `fmap` some (paragraph <* space)
 
 -- | See 'Ast.Paragraph'.
-paragraph :: (Stream a, Token a ~ Char, IsString b)
+paragraph :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
           => OgmarkupParser a (Ast.Paragraph b)
 paragraph = some component <* blank
 
 -- | See 'Ast.Component'.
-component :: (Stream a, Token a ~ Char, IsString b)
+component :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
           => OgmarkupParser a (Ast.Component b)
 component = try (dialogue <|> thought <|> teller) <|> illformed
 
 -- | See 'Ast.IllFormed'.
-illformed :: (Stream a, Token a ~ Char, IsString b)
+illformed :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
           => OgmarkupParser a (Ast.Component b)
 illformed = Ast.IllFormed `fmap` restOfParagraph
 
 -- | Parse the rest of the current paragraph with no regards for the
 -- ogmarkup syntax. This Parser is used when the document is ill-formed, to
 -- find a new point of synchronization.
-restOfParagraph :: (Stream a, Token a ~ Char, IsString b)
+restOfParagraph :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
                 => OgmarkupParser a b
 restOfParagraph = do lookAhead anyChar
                      notFollowedBy endOfParagraph
@@ -181,23 +185,23 @@ restOfParagraph = do lookAhead anyChar
                      return $ fromString str
 
 -- | See 'Ast.Teller'.
-teller :: (Stream a, Token a ~ Char, IsString b)
+teller :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
        => OgmarkupParser a (Ast.Component b)
 teller = Ast.Teller `fmap` some format
 
 -- | See 'Ast.Dialogue'.
-dialogue :: (Stream a, Token a ~ Char, IsString b)
+dialogue :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
          => OgmarkupParser a (Ast.Component b)
 dialogue = talk '[' ']' Ast.Dialogue
 
 -- | See 'Ast.Thought'.
-thought :: (Stream a, Token a ~ Char, IsString b)
+thought :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
         => OgmarkupParser a (Ast.Component b)
 thought = talk '<' '>' Ast.Thought
 
 -- | @'talk' c c' constr@ wraps a reply surrounded by @c@ and @c'@ inside
 --   @constr@ (either 'Ast.Dialogue' or 'Ast.Thought').
-talk :: (Stream a, Token a ~ Char, IsString b)
+talk :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
      => Char -- ^ A character to mark the begining of a reply
      -> Char -- ^ A character to mark the end of a reply
      -> (Ast.Reply b -> Maybe b -> Ast.Component b) -- ^ Either 'Ast.Dialogue' or 'Ast.Thought' according to the situation
@@ -211,7 +215,7 @@ talk c c' constructor = do
 
 -- | Parse the name of the character which speaks or thinks. According to
 -- the ogmarkup syntax, it is surrounded by parentheses.
-characterName :: (Stream a, Token a ~ Char, IsString b)
+characterName :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
            => OgmarkupParser a b
 characterName = do
   char '('
@@ -221,7 +225,7 @@ characterName = do
   return $ fromString auth
 
 -- | 'reply' parses a 'Ast.Reply'.
-reply :: (Stream a, Token a ~ Char, IsString b)
+reply :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
       => Char
       -> Char
       -> OgmarkupParser a (Ast.Reply b)
@@ -241,7 +245,7 @@ reply c c' = do char c
                           _ -> return $ Ast.Simple p1
 
 -- | See 'Ast.Format'.
-format :: (Stream a, Token a ~ Char, IsString b)
+format :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
        => OgmarkupParser a (Ast.Format b)
 format = choice [ raw
                 , emph
@@ -250,12 +254,12 @@ format = choice [ raw
                 ]
 
 -- | See 'Ast.Raw'.
-raw :: (Stream a, Token a ~ Char, IsString b)
+raw :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
     => OgmarkupParser a (Ast.Format b)
 raw = Ast.Raw `fmap` some atom
 
 -- | See 'Ast.Emph'.
-emph :: (Stream a, Token a ~ Char, IsString b)
+emph :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
      => OgmarkupParser a (Ast.Format b)
 emph = do char '*'
           blank
@@ -266,7 +270,7 @@ emph = do char '*'
           return . Ast.Emph $ (f:fs)
 
 -- | See 'Ast.StrongEmph'.
-strongEmph :: (Stream a, Token a ~ Char, IsString b)
+strongEmph :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
            => OgmarkupParser a (Ast.Format b)
 strongEmph = do char '+'
                 blank
@@ -277,7 +281,7 @@ strongEmph = do char '+'
                 return . Ast.StrongEmph $ (f:fs)
 
 -- | See 'Ast.Quote'.
-quote :: (Stream a, Token a ~ Char, IsString b)
+quote :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
       => OgmarkupParser a (Ast.Format b)
 quote = do openQuote
            enterQuote
@@ -287,19 +291,19 @@ quote = do openQuote
            return . Ast.Quote $ (f:fs)
 
 -- | See 'Ast.Atom'.
-atom :: (Stream a, Token a ~ Char, IsString b)
+atom :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
      => OgmarkupParser a (Ast.Atom b)
 atom = (word <|> mark <|> longword) <* blank
 
 -- | See 'Ast.Word'. This parser does not consume the following spaces, so
 --   the caller needs to take care of it.
-word :: (Stream a, Token a ~ Char, IsString b)
+word :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
      => OgmarkupParser a (Ast.Atom b)
 word = do notFollowedBy endOfWord
           str <- manyTill anyChar (lookAhead $ try endOfWord)
           return $ Ast.Word (fromString str)
   where
-    endOfWord :: (Stream a, Token a ~ Char)
+    endOfWord :: (Stream a, Token a ~ Char, IsString (Tokens a))
               => OgmarkupParser a ()
     endOfWord = eof <|> (skip spaceChar) <|> (skip $ oneOf specChar)
     specChar = "\"«»`+*[]<>|_\'’.,;-–—!?:"
@@ -312,7 +316,7 @@ word = do notFollowedBy endOfWord
 --
 --   Therefore, @`@ can be used to insert normally reserved symbol
 --   inside a generated document.
-longword :: (Stream a, Token a ~ Char, IsString b)
+longword :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString b)
          => OgmarkupParser a (Ast.Atom b)
 longword = do char '`'
               notFollowedBy (char '`')
@@ -321,7 +325,7 @@ longword = do char '`'
 
 -- | See 'Ast.Punctuation'. Be aware that 'mark' does not parse the quotes
 --   because they are processed 'quote'.
-mark :: (Stream a, Token a ~ Char)
+mark :: (Stream a, Token a ~ Char, IsString (Tokens a))
      => OgmarkupParser a (Ast.Atom b)
 mark = Ast.Punctuation `fmap` (semicolon
         <|> colon
@@ -351,14 +355,14 @@ mark = Ast.Punctuation `fmap` (semicolon
 
 -- | See 'Ast.OpenQuote'. This parser consumes the following blank (see 'blank')
 --   and skip the result.
-openQuote :: (Stream a, Token a ~ Char)
+openQuote :: (Stream a, Token a ~ Char, IsString (Tokens a))
           => OgmarkupParser a ()
 openQuote = do char '«' <|> char '"'
                blank
 
 -- | See 'Ast.CloseQuote'. This parser consumes the following blank (see 'blank')
 --   and skip the result.
-closeQuote :: (Stream a, Token a ~ Char)
+closeQuote :: (Stream a, Token a ~ Char, IsString (Tokens a))
            => OgmarkupParser a ()
 closeQuote = do char '»' <|> char '"'
                 blank
@@ -366,7 +370,7 @@ closeQuote = do char '»' <|> char '"'
 -- | An aside section (see 'Ast.Aside') is a particular region
 --   surrounded by two lines of underscores (at least three).
 --   This parser consumes one such line.
-asideSeparator :: (Stream a, Token a ~ Char)
+asideSeparator :: (Stream a, Token a ~ Char, IsString (Tokens a))
                => OgmarkupParser a ()
 asideSeparator = do string "__"
                     some (char '_')
@@ -374,13 +378,13 @@ asideSeparator = do string "__"
 
 -- | The end of a paragraph is the end of the document or two blank lines
 -- or an aside separator, that is a line of underscores.
-endOfParagraph :: (Stream a, Token a ~ Char)
+endOfParagraph :: (Stream a, Token a ~ Char, IsString (Tokens a))
                => OgmarkupParser a ()
 endOfParagraph = try betweenTwoSections
                  <|> asideSeparator
                  <|> eof
   where
-    betweenTwoSections :: (Stream a, Token a ~ Char)
+    betweenTwoSections :: (Stream a, Token a ~ Char, IsString (Tokens a))
                        => OgmarkupParser a ()
     betweenTwoSections = do count 2 $ manyTill spaceChar (eof <|> skip (char '\n'))
                             space
@@ -389,7 +393,7 @@ endOfParagraph = try betweenTwoSections
 -- | This parser consumes all the white spaces until it finds either an aside
 --   surrounding marker (see 'Ast.Aside'), the end of the document or
 --   one blank line. The latter marks the end of the current paragraph.
-blank :: (Stream a, Token a ~ Char)
+blank :: (Stream a, Token a ~ Char, IsString (Tokens a))
       => OgmarkupParser a ()
 blank = do skip $ optional (notFollowedBy endOfParagraph >> space)
 
