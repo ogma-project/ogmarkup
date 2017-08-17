@@ -53,5 +53,18 @@ ogmarkup :: (Stream a, Token a ~ Char, IsString a, Eq a, Monoid a, IsString b, M
          -> c         -- ^ The generator configuration
          -> b
 ogmarkup input conf = case Parser.parse Parser.document "" input of
-                        Right ast -> Gen.runGenerator (Gen.document ast) conf
+                        Right ast -> Gen.runGenerator (Gen.document $ merge ast) conf
                         Left _    -> error "failed to parse an ogmarkup document even with best effort"
+  where merge :: Ast.Document a -> Ast.Document a
+        merge ((Ast.Story x):rest) = (Ast.Story $ mergep x):rest
+        merge ((Ast.Aside cls x):rest) = (Ast.Aside cls (mergep x)):rest
+        merge (x:rest) = x:(merge rest)
+        merge [] = []
+
+        mergep :: [Ast.Paragraph a] -> [Ast.Paragraph a]
+        mergep (x@(_:_):y@((Ast.Dialogue _ _):_):rest) =
+          case last x of
+            Ast.Dialogue _ _ -> mergep $ (x `mappend` y):rest
+            _                -> x:(mergep $ y:rest)
+        mergep (x:y:rest) = x:(mergep $ y:rest)
+        mergep x = x
