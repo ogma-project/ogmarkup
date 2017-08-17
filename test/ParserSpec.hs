@@ -4,6 +4,7 @@
 module ParserSpec where
 
 import           Data.Either
+import           Data.Void                     (Void)
 import           Test.Hspec
 import           Test.Hspec.Megaparsec
 import           Text.Megaparsec
@@ -15,7 +16,7 @@ parse' :: (Show b, Eq b)
       => Parser.OgmarkupParser String b
       -> String
       -> String
-      -> Either (ParseError Char Dec) b
+      -> Either (ParseError Char Void) b
 parse' = Parser.parse
 
 spec :: Spec
