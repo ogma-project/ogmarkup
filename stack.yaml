@@ -4,4 +4,4 @@ extra-deps:
 - file-embed-poly-0.1.0
 packages:
 - '.'
-resolver: nightly-2016-07-29
+resolver: lts-9.0
