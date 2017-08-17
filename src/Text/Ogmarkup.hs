@@ -11,9 +11,10 @@ The library is still in an early stage of development, hence the "experimental"
 stability. Be aware the exposed interface may change in future realase.
 -}
 
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE FlexibleContexts    #-}
 
 module Text.Ogmarkup
     (
@@ -48,7 +49,7 @@ import qualified Text.Ogmarkup.Private.Typography as Typo
 -- | From a String, parse and generate an output according to a generation configuration.
 --   The inner definitions of the parser and the generator imply that the output
 --   type has to be an instance of the 'IsString' and 'Monoid' classes.
-ogmarkup :: (Stream a, Token a ~ Char, IsString a, Eq a, Monoid a, IsString b, Monoid b, Conf.GenConf c b)
+ogmarkup :: (Stream a, Token a ~ Char, IsString (Tokens a), IsString a, Eq a, Monoid a, IsString b, Monoid b, Conf.GenConf c b)
          => a         -- ^ The input string
          -> c         -- ^ The generator configuration
          -> b
